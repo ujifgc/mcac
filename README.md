@@ -5,7 +5,7 @@
 ### Installation
 
 1) Copy `mcac.exe` to any folder you like
-2) Make sure you audio device has [ASIO](https://en.wikipedia.org/wiki/Audio_Stream_Input/Output)™ drivers installed
+2) Make sure your audio device has [ASIO](https://en.wikipedia.org/wiki/Audio_Stream_Input/Output)™ drivers installed
 
 #### Required libraries
 
