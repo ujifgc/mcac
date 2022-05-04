@@ -64,11 +64,6 @@ The tool is tested on Windows 10 with Steinberg UR22C, Behringer UMC204HD, Voice
 You may experience inability to share ASIO™ drivers between MCAC and you DAW. It's not
 possible to resolve as the sharing is up to the device driver.
 
-### Used libraries
-
-1) JUCE framework. https://juce.com/
-2) ASIO™ headers. ASIO is a trademark of Steinberg Media Technologies GmbH
-
 ### Troubleshooting
 
 #### MCAC: AAC library not available
@@ -86,3 +81,8 @@ Make sure the output folder is writable
 ##### Other errors
 
 Please contact maintainer through GitHub issues: [github.com/ujifgc/mcac/issues](https://github.com/ujifgc/mcac/issues)
+
+### Libraries used to create MCAC
+
+1) JUCE framework. https://juce.com/
+2) ASIO™ headers. ASIO is a trademark of Steinberg Media Technologies GmbH
