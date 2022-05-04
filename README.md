@@ -6,6 +6,7 @@
 
 1) Copy `mcac.exe` to any folder you like
 2) Make sure your audio device has [ASIO](https://en.wikipedia.org/wiki/Audio_Stream_Input/Output)™ drivers installed
+3) Make sure you have CoreAudio libraries in your system
 
 #### Required libraries
 
@@ -67,3 +68,21 @@ possible to resolve as the sharing is up to the device driver.
 
 1) JUCE framework. https://juce.com/
 2) ASIO™ headers. ASIO is a trademark of Steinberg Media Technologies GmbH
+
+### Troubleshooting
+
+#### MCAC: AAC library not available
+
+Make sure to install CoreAudio to default location in your system. Google for `AppleApplicationSupport.msi` and `AppleApplicationSupport64.msi`
+
+#### MCAC: failed to write packet header
+
+Make sure the output folder has enough space for the recording
+
+#### MCAC: failed to create output file
+
+Make sure the output folder is writable
+
+##### Other errors
+
+Please contact maintainer through GitHub issues: [github.com/ujifgc/mcac/issues](https://github.com/ujifgc/mcac/issues)
