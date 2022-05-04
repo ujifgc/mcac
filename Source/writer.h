@@ -49,6 +49,7 @@ class Writer {
 	Array<int> bitrates;
 	int qualities[6] = { 0, 16, 32, 64, 96, 127 };
 	class AsioDevice* device = nullptr;
+	bool core_audio_ready = false;
 
 public:
 	String message;
@@ -59,7 +60,7 @@ public:
 	void init();
 	void init(double _sample_rate);
 	void uninit();
-	void open();
+	bool open();
 	void close(bool report = true);
 	static OSStatus input_data_provider(AudioConverterRef inAudioConverter, UInt32* ioNumberDataPackets, AudioBufferList* ioData, AudioStreamPacketDescription** outDataPacketDescription, void* inUserData);
 	void write_packet(circlebuf* _input_buffer);

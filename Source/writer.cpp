@@ -10,7 +10,7 @@ Writer::Writer(class AsioDevice *_device) {
 
 	InitializeCriticalSection(&file_section);
 
-	load_core_audio();
+	core_audio_ready = load_core_audio();
 
 	circlebuf_init(&encode_buffer);
 	circlebuf_init(&output_buffer);
@@ -67,6 +67,13 @@ void Writer::init(double _sample_rate) {
 
 	OSStatus error;
 	UInt32 size = sizeof(out);
+
+	if (!core_audio_ready) {
+		message = "MCAC: AAC library not available";
+		PostMessage(message_window, WM_USER_WRITER_ERROR, 0, 0);
+		stop = true;
+		return;
+	}
 
 	error = AudioFormatGetProperty(kAudioFormatProperty_FormatInfo, 0, NULL, &size, &out);
 
@@ -153,14 +160,15 @@ void Writer::init(double _sample_rate) {
 void Writer::uninit() {
 	close(false);
 
-	AudioConverterDispose(converter);
+	if (converter) AudioConverterDispose(converter);
 }
 
-void Writer::open() {
+bool Writer::open() {
 	if (!converter) {
 		message = "MCAC: converter is not ready";
 		PostMessage(message_window, WM_USER_WRITER_ERROR, 0, 0);
 		stop = true;
+		return false;
 	}
 
 	String filename = output_folder_path + "\\output_" + Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M-%S") + ".aac";
@@ -169,15 +177,18 @@ void Writer::open() {
 	file = fopen(filename.toStdString().c_str(), "wb");
 	LeaveCriticalSection(&file_section);
 
-	if (!file) {
-		message = "MCAC: failed to create output file. ";
-		message += strerror(errno);
-		PostMessage(message_window, WM_USER_WRITER_ERROR, 0, 0);
-	}
-	else {
+	if (file) {
 		message = "Recording";
 		PostMessage(message_window, WM_USER_WRITER_STATUS, 0, 0);
 		stop = false;
+		return true;
+	}
+	else {
+		message = "MCAC: failed to create output file. ";
+		message += strerror(errno);
+		PostMessage(message_window, WM_USER_WRITER_ERROR, 0, 0);
+		stop = true;
+		return false;
 	}
 }
 
@@ -224,6 +235,12 @@ OSStatus Writer::input_data_provider(AudioConverterRef inAudioConverter, UInt32*
 }
 
 void Writer::write_packet(circlebuf* _input_buffer) {
+	if (!core_audio_ready) {
+		message = "MCAC: AAC library not available";
+		PostMessage(message_window, WM_USER_WRITER_ERROR, 0, 0);
+		stop = true;
+	}
+
 	if (stop) {
 		circlebuf_pop_front(_input_buffer, nullptr, _input_buffer->size);
 		return;

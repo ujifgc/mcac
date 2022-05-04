@@ -305,9 +305,14 @@ void MainComponent::buttonClicked(juce::Button* button) {
     
     if (button == &ui_writer_start_button) {
         if (writer) {
-            writer->open();
-            ui_writer_start_button.setEnabled(false);
-            ui_writer_stop_button.setEnabled(true);
+            if (writer->open()) {
+                ui_writer_start_button.setEnabled(false);
+                ui_writer_stop_button.setEnabled(true);
+            }
+            else {
+                bool ok = AlertWindow::showOkCancelBox(AlertWindow::AlertIconType::WarningIcon, "Failed to start recording", ui_writer_status_message.getText(), "Oh my Glob!", "Help", this);
+                if (!ok) URL("https://github.com/ujifgc/mcac#troubleshooting").launchInDefaultBrowser();
+            }
         }
         return;
     }
