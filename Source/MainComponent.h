@@ -25,6 +25,7 @@ extern int shifted_channel_indexes[MAX_INPUT_CHANNELS];
 
 void WriteSettings(String key, String value);
 String ReadSettingsString(String key, String default_value = "");
+String getTitle();
 
 class Volumeter : public Component {
     void paint(Graphics& g) override {

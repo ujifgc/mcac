@@ -1,4 +1,4 @@
-﻿#include "MainComponent.h"
+#include "MainComponent.h"
 
 String settings_file;
 String appdata_folder;
@@ -63,7 +63,7 @@ public:
             const int fixed_width = 10 + 315 + 20 + 285 + 10;
             setResizeLimits(fixed_width, 300, 8000, 8000);
             centreWithSize (getWidth(), getHeight());
-            setName(L"MCAC — " APP_NAME);
+            setName(getTitle());
 
             setVisible (true);
         }
