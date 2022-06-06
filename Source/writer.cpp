@@ -92,19 +92,24 @@ void Writer::init(double _sample_rate) {
 	UInt32 converter_quality = kAudioConverterQuality_Max;
 	error = AudioConverterSetProperty(converter, kAudioConverterCodecQuality, sizeof(converter_quality), &converter_quality);
 
-	const SInt32 channel_map[9][8] = {
-		{ 0, 0, 0, 0, 0, 0, 0, 0 },
-		{ 0, 0, 0, 0, 0, 0, 0, 0 },
-		{ 0, 1, 0, 0, 0, 0, 0, 0 }, // L R
-		{ 2, 0, 1, 0, 0, 0, 0, 0 }, // C L R
-		{ 2, 0, 1, 3, 0, 0, 0, 0 }, // C L R C2
-		{ 2, 0, 1, 3, 4, 0, 0, 0 }, // C L R L2 R2
-		{ 2, 0, 1, 4, 5, 3, 0, 0 }, // C L R L2 R2 C2 L
-		{ 2, 0, 1, 6, 7, 4, 5, 0 }, // failing
-		{ 2, 0, 1, 6, 7, 4, 5, 3 }, // C L R L2 R2 L3 R3 C2
+	const SInt32 acl_map[9] = {
+		kAudioChannelLayoutTag_UseChannelBitmap,
+		kAudioChannelLayoutTag_Mono,
+		kAudioChannelLayoutTag_Stereo,
+		kAudioChannelLayoutTag_AAC_3_0,
+		kAudioChannelLayoutTag_AAC_4_0,
+		kAudioChannelLayoutTag_AAC_5_0,
+		kAudioChannelLayoutTag_AAC_6_0,
+		kAudioChannelLayoutTag_AAC_7_0, //distortion
+		kAudioChannelLayoutTag_AAC_Octagonal,
 	};
 
-	error = AudioConverterSetProperty(converter, kAudioConverterChannelMap, channels * sizeof(SInt32), channel_map[channels]);
+	AudioChannelLayout acl = { 0 };
+	acl.mChannelLayoutTag = acl_map[channels];
+	UInt32 acl_size = sizeof(acl);
+
+	error = AudioConverterSetProperty(converter, kAudioConverterInputChannelLayout, acl_size, &acl);
+	error = AudioConverterSetProperty(converter, kAudioConverterOutputChannelLayout, acl_size, &acl);
 
 	error = AudioConverterGetPropertyInfo(converter, kAudioConverterApplicableEncodeBitRates, &size, NULL);
 	AudioValueRange* bitrate_infos = (AudioValueRange*)calloc(size, 1);
