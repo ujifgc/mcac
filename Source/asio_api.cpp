@@ -147,11 +147,10 @@ void AsioDevice::open() {
 	error = driver->createBuffers(buffer_infos, input_channels_number + output_channels_number, preferred_buffer_size, &callbacks[index]);
 	refuse(error);
 
-	for (int i = 0; i < input_channels_number; i += 1) {
-		sample_type_buffers[i] = (float*)calloc(preferred_buffer_size, sizeof(float));
+	for (int i = 0; i < MAX_INPUT_CHANNELS; i++) {
+		circlebuf_init(&input_buffers[i]);
+		input_buffer_pointers[i] = &input_buffers[i];
 	}
-	circlebuf_init(&input_buffer);
-	circlebuf_init(&interleaved_buffer);
 	driver_buffers_allocated = true;
 
 	initialize_latencies();
@@ -197,17 +196,7 @@ void AsioDevice::close() {
 
 	if (driver_buffers_allocated) {
 		driver->disposeBuffers();
-
-		for (int i = 0; i < input_channels_number; i += 1) {
-			if (sample_type_buffers[i]) {
-				free(sample_type_buffers[i]);
-				sample_type_buffers[i] = NULL;
-			}
-		}
-
-		circlebuf_free(&input_buffer);
-		circlebuf_free(&interleaved_buffer);
-
+		for (int i = 0; i < MAX_INPUT_CHANNELS; i++) circlebuf_free(&input_buffers[i]);
 		driver_buffers_allocated = false;
 	}
 
@@ -291,7 +280,7 @@ DWORD WINAPI AsioDevice::CaptureThread(void* data) {
 		int wait_result = WaitForMultipleObjects(2, signals, false, INFINITE);
 		if (wait_result == WAIT_OBJECT_0) {
 			EnterCriticalSection(&device->buffer_section);
-			if (writer) writer->write_packet(&device->input_buffer);
+			if (writer) writer->write_packet(device->input_buffer_pointers);
 			LeaveCriticalSection(&device->buffer_section);
 		}
 		else if (wait_result == WAIT_OBJECT_0 + 1) {
@@ -394,45 +383,20 @@ ASIOTime* AsioDevice::buffer_switch_time_info(int device_index, ASIOTime* timeIn
 	UNREFERENCED_PARAMETER(processNow);
 }
 
-static inline void* fill_interleaved_buffer(size_t channels, size_t samples, float** fdata, struct circlebuf* interleaved_buffer) {
-	circlebuf_upsize(interleaved_buffer, channels * samples * BYTES_PER_SAMPLE);
-	float* buffer = (float*)circlebuf_data(interleaved_buffer, 0);
-	extern float last_buffer_magnitude[MAX_INPUT_CHANNELS];
-
-	for (size_t c = 0; c < channels; c++) {
-		if (fdata[c]) {
-			float sum_of_squares = 0.0f;
-			for (size_t i = 0; i < samples; i++) {
-				float sample = buffer[i * channels + c] = fdata[c][i];
-				sum_of_squares += sample * sample;
-			}
-			last_buffer_magnitude[c] = sqrtf(sum_of_squares / samples);
-		}
-		else {
-			for (size_t i = 0; i < samples; i++) {
-				buffer[i * channels + c] = 0.0f;
-			}
-			last_buffer_magnitude[c] = 0.0f;
-		}
-	}
-	for (size_t c = channels; c < MAX_INPUT_CHANNELS; c++) {
-		last_buffer_magnitude[c] = 0.0f;
-	}
-
-	return buffer;
-}
-
 static ULONGLONG last_time = 0;
 
 void AsioDevice::push_received_buffers(int buffer_index) {
 	int skipped = 0;
+
 	for (int channel = 0; channel < input_channels_number; channel += 1) {
 		if (active_channels[channel]) {
+			size_t data_size = input_buffers[channel - skipped].size;
+			circlebuf_upsize(&input_buffers[channel - skipped], data_size + (size_t)preferred_buffer_size * BYTES_PER_SAMPLE);
 			if (sample_type == ASIOSTInt32LSB) {
-				convertInt32ToFloat((const char*)buffer_infos[channel].buffers[buffer_index], sample_type_buffers[channel - skipped], preferred_buffer_size);
+				convertInt32ToFloat((const char*)buffer_infos[channel].buffers[buffer_index], (float*)circlebuf_data(&input_buffers[channel - skipped], data_size), preferred_buffer_size);
 			}
 			else {
-				memcpy(sample_type_buffers[channel - skipped], buffer_infos[channel].buffers[buffer_index], preferred_buffer_size * BYTES_PER_SAMPLE);
+				memcpy(circlebuf_data(&input_buffers[channel - skipped], data_size), buffer_infos[channel].buffers[buffer_index], (size_t)preferred_buffer_size * BYTES_PER_SAMPLE);
 			}
 		}
 		else {
@@ -440,11 +404,12 @@ void AsioDevice::push_received_buffers(int buffer_index) {
 		}
 	}
 
-	fill_interleaved_buffer(active_channels_count, preferred_buffer_size, sample_type_buffers, &interleaved_buffer);
-	circlebuf_push_back(&input_buffer, circlebuf_data(&interleaved_buffer, 0), active_channels_count * preferred_buffer_size * BYTES_PER_SAMPLE);
-
 	extern float last_buffer_magnitude[MAX_INPUT_CHANNELS];
 	extern float buffer_magnitude[MAX_INPUT_CHANNELS];
+
+	for (int channel = 0; channel < active_channels_count; channel++) {
+		last_buffer_magnitude[channel] = ((float*)circlebuf_data(&input_buffers[channel], 0))[0];
+	}
 
 	for (int channel = 0; channel < input_channels_number; channel += 1) {
 		if (buffer_magnitude[channel] < last_buffer_magnitude[channel]) {

@@ -33,10 +33,8 @@ class AsioDevice {
 
 	int output_samples_per_10ms = 0;
 
-	float* sample_type_buffers[MAX_INPUT_CHANNELS] = { 0 };
-
-	struct circlebuf input_buffer = { 0 };
-	struct circlebuf interleaved_buffer = { 0 };
+	circlebuf input_buffers[MAX_INPUT_CHANNELS] = { 0 };
+	circlebuf *input_buffer_pointers[MAX_INPUT_CHANNELS] = { 0 };
 
 	WinHandle stop_signal, receive_signal;
 	WinHandle capture_thread;

@@ -40,9 +40,8 @@ class Writer {
 	AudioConverterRef converter = nullptr;
 	unsigned bytes_per_input_packet = 0;
 	unsigned sample_rate = 0;
-	struct circlebuf encode_buffer = { 0 };
 	struct circlebuf output_buffer = { 0 };
-	circlebuf* input_buffer = nullptr;
+	circlebuf** input_buffers = nullptr;
 	FILE* file = nullptr;
 	bool stop = true;
 	CRITICAL_SECTION file_section;
@@ -63,5 +62,5 @@ public:
 	bool open();
 	void close(bool report = true);
 	static OSStatus input_data_provider(AudioConverterRef inAudioConverter, UInt32* ioNumberDataPackets, AudioBufferList* ioData, AudioStreamPacketDescription** outDataPacketDescription, void* inUserData);
-	void write_packet(circlebuf* _input_buffer);
+	void write_packet(circlebuf **_input_buffers);
 };

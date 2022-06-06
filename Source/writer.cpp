@@ -12,14 +12,12 @@ Writer::Writer(class AsioDevice *_device) {
 
 	core_audio_ready = load_core_audio();
 
-	circlebuf_init(&encode_buffer);
 	circlebuf_init(&output_buffer);
 }
 
 Writer::~Writer() {
 	uninit();
 
-	circlebuf_free(&encode_buffer);
 	circlebuf_free(&output_buffer);
 
 	DeleteCriticalSection(&file_section);
@@ -53,8 +51,8 @@ void Writer::init(double _sample_rate) {
 	in.mSampleRate = sample_rate;
 	in.mChannelsPerFrame = channels;
 	in.mFormatID = kAudioFormatLinearPCM;
-	in.mFormatFlags = kAudioFormatFlagIsPacked | kAudioFormatFlagIsFloat;
-	in.mBytesPerFrame = channels * BYTES_PER_SAMPLE;
+	in.mFormatFlags = kAudioFormatFlagIsPacked | kAudioFormatFlagIsFloat | kAudioFormatFlagIsNonInterleaved;
+	in.mBytesPerFrame = BYTES_PER_SAMPLE;
 	in.mFramesPerPacket = 1;
 	in.mBytesPerPacket = in.mFramesPerPacket * in.mBytesPerFrame;
 	in.mBitsPerChannel = BYTES_PER_SAMPLE * 8;
@@ -100,7 +98,7 @@ void Writer::init(double _sample_rate) {
 		kAudioChannelLayoutTag_AAC_4_0,
 		kAudioChannelLayoutTag_AAC_5_0,
 		kAudioChannelLayoutTag_AAC_6_0,
-		kAudioChannelLayoutTag_AAC_7_0, //distortion
+		kAudioChannelLayoutTag_AAC_7_0,
 		kAudioChannelLayoutTag_AAC_Octagonal,
 	};
 
@@ -220,18 +218,20 @@ OSStatus Writer::input_data_provider(AudioConverterRef inAudioConverter, UInt32*
 
 	UInt32 bytes_required = (*ioNumberDataPackets) * active_writer->bytes_per_input_packet;
 
-	if (active_writer->input_buffer->size < bytes_required) {
+	if (active_writer->input_buffers[0]->size < bytes_required) {
 		*ioNumberDataPackets = 0;
 		return MORE_DATA_REQUIRED;
 	}
 
-	circlebuf_upsize(&active_writer->encode_buffer, bytes_required);
-
-	ioData->mBuffers[0].mNumberChannels = active_writer->channels;
-	ioData->mBuffers[0].mDataByteSize = bytes_required;
-	ioData->mBuffers[0].mData = circlebuf_data(&active_writer->encode_buffer, 0);
-
-	circlebuf_pop_front(active_writer->input_buffer, ioData->mBuffers[0].mData, bytes_required);
+	for (int channel = 0; channel < active_writer->channels; channel++) {
+		ioData->mBuffers[channel].mNumberChannels = 1;
+		ioData->mBuffers[channel].mDataByteSize = bytes_required;
+		if (active_writer->input_buffers[channel]->size < bytes_required) {
+			circlebuf_push_back_zero(active_writer->input_buffers[channel], bytes_required);
+		}
+		ioData->mBuffers[channel].mData = circlebuf_data(active_writer->input_buffers[channel], 0);
+		circlebuf_pop_front(active_writer->input_buffers[channel], ioData->mBuffers[channel].mData, bytes_required);
+	}
 
 	return 0;
 
@@ -239,7 +239,7 @@ OSStatus Writer::input_data_provider(AudioConverterRef inAudioConverter, UInt32*
 	UNUSED_PARAMETER(outDataPacketDescription);
 }
 
-void Writer::write_packet(circlebuf* _input_buffer) {
+void Writer::write_packet(circlebuf **_input_buffers) {
 	if (!core_audio_ready) {
 		message = "MCAC: AAC library not available";
 		PostMessage(message_window, WM_USER_WRITER_ERROR, 0, 0);
@@ -247,11 +247,13 @@ void Writer::write_packet(circlebuf* _input_buffer) {
 	}
 
 	if (stop) {
-		circlebuf_pop_front(_input_buffer, nullptr, _input_buffer->size);
+		for (int i = 0; i < MAX_INPUT_CHANNELS; i++) {
+			circlebuf_pop_front(_input_buffers[i], nullptr, _input_buffers[i]->size);
+		}
 		return;
 	}
 
-	input_buffer = _input_buffer;
+	input_buffers = _input_buffers;
 
 	UInt32 packets_count = 1;
 	AudioBufferList output_buffers = { 0 };
