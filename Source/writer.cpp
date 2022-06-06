@@ -108,6 +108,18 @@ void Writer::init(double _sample_rate) {
 
 	error = AudioConverterSetProperty(converter, kAudioConverterInputChannelLayout, acl_size, &acl);
 	error = AudioConverterSetProperty(converter, kAudioConverterOutputChannelLayout, acl_size, &acl);
+	const SInt32 channel_map[9][8] = {
+		{ 0, 0, 0, 0, 0, 0, 0, 0 },
+		{ 0, 0, 0, 0, 0, 0, 0, 0 }, // L
+		{ 0, 1, 0, 0, 0, 0, 0, 0 }, // L R
+		{ 2, 0, 1, 0, 0, 0, 0, 0 }, // C L R
+		{ 2, 0, 1, 3, 0, 0, 0, 0 }, // C L R C2
+		{ 2, 0, 1, 3, 4, 0, 0, 0 }, // C L R L2 R2
+		{ 2, 0, 1, 4, 5, 3, 0, 0 }, // C L R L2 R2 C2 L
+		{ 2, 0, 1, 6, 7, 4, 5, 0 },
+		{ 2, 0, 1, 6, 7, 4, 5, 3 }, // C L R L2 R2 L3 R3 C2
+	};
+	error = AudioConverterSetProperty(converter, kAudioConverterChannelMap, channels * sizeof(SInt32), channel_map[channels]);
 
 	error = AudioConverterGetPropertyInfo(converter, kAudioConverterApplicableEncodeBitRates, &size, NULL);
 	AudioValueRange* bitrate_infos = (AudioValueRange*)calloc(size, 1);
