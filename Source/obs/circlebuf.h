@@ -16,12 +16,10 @@
 
 #pragma once
 
-#include "c99defs.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-
-#include "bmem.h"
 
 #ifdef __cplusplus
 extern "C" {

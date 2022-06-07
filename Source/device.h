@@ -1,29 +1,35 @@
 #pragma once
 
+#include "asio_api.h"
+
 class Device {
 	IASIO* driver = nullptr;
-	AsioDevice* instance = nullptr;
 	class DeviceManager* manager = nullptr;
-	volatile bool stop = false;
+	volatile bool is_stopping = false;
 
 	static DWORD WINAPI OwnerThread(void* data);
 	WinHandle request_signal, result_signal;
 	WinHandle owner_thread;
 
-	String request;
+	DeviceRequest request;
 	String name;
-	//String error;
-	int index;
-	CLSID clsid = { 0 };
+	int index = -1;
+	CLSID clsid = {};
 
 public:
+	AsioDevice* instance = nullptr;
+
 	~Device();
 	Device(String name, DeviceManager *manager, int index);
 	HANDLE open();
-	void onSignal(String request);
+	void onSignal(DeviceRequest request);
 	void init_instance();
 
 public:
+	byte update_active_channels() {
+		return instance ? instance->update_active_channels() : 0;
+	}
+
 	StringArray get_input_channel_names() {
 		return instance ? instance->input_channel_names : StringArray();
 	}
@@ -37,15 +43,6 @@ public:
 		return instance ? instance->sample_type : 0;
 	}
 	DeviceStatus get_device_status() {
-		return instance ? instance->status : dsNone;
-	}
-	AsioDevice* get_instance() {
-		return instance;
-	}
-	String get_name() {
-		return name;
-	}
-	int get_index() {
-		return index;
+		return instance ? instance->status : DeviceStatus::None;
 	}
 };

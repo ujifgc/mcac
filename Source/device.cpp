@@ -1,5 +1,4 @@
 #include "core.h"
-#include "asio_api.h"
 #include "device.h"
 #include "device_manager.h"
 
@@ -9,7 +8,7 @@ Device::Device(String _name, DeviceManager* _manager, int _index) {
 	name = _name;
 	manager = _manager;
 	index = _index;
-	stop = false;
+	is_stopping = false;
 	request_signal = CreateEvent(nullptr, false, false, nullptr);
 	result_signal = CreateEvent(nullptr, false, false, nullptr);
 	owner_thread = CreateThread(nullptr, 0, OwnerThread, this, 0, nullptr);
@@ -17,19 +16,19 @@ Device::Device(String _name, DeviceManager* _manager, int _index) {
 }
 
 Device::~Device() {
-	stop = true;
+	is_stopping = true;
 	SetEvent(request_signal);
 	WaitForSingleObject(owner_thread, 10 * RECONNECT_INTERVAL);
 	if (owner_thread.Valid()) {
-		mlog(name, "MCAC: failed to gracefully exit owner thread", llError);
+		mlog(name, "MCAC: failed to gracefully exit owner thread", LogLevel::Error);
 		//TerminateThread(owner_thread, 0);
 	}
-	mlog(name, __func__, llDebug);
+	mlog(name, __func__, LogLevel::Debug);
 }
 
 HANDLE Device::open() {
 	ResetEvent(result_signal);
-	request = "open";
+	request = DeviceRequest::Open;
 	SetEvent(request_signal);
 	return result_signal;
 }
@@ -43,12 +42,12 @@ DWORD WINAPI Device::OwnerThread(void* data) {
 	
 	String devname = device->name;
 
-	while (!device->stop) {
+	while (!device->is_stopping) {
 		switch (WaitForSingleObject(device->request_signal, REQUEST_INTERVAL)) {
 		case WAIT_TIMEOUT:
 			break;
 		case WAIT_OBJECT_0:
-			if (!device->stop) device->onSignal(device->request);
+			if (!device->is_stopping) device->onSignal(device->request);
 			break;
 		default:
 			throw "MCAC: Abnormal termination of owner thread";
@@ -85,20 +84,22 @@ void Device::init_instance() {
 		if (SUCCEEDED(hres))
 			instance = new AsioDevice(driver, index);
 		else
-			mlog(name, "MCAC: Failed to interface with the driver", llDebug);
+			mlog(name, "MCAC: Failed to interface with the driver", LogLevel::Debug);
 	}
 	else {
-		mlog(name, "MCAC: driver name not found", llDebug);
+		mlog(name, "MCAC: driver name not found", LogLevel::Debug);
 	}
 }
 
-void Device::onSignal(String _request) {
-	mlog(name, "MCAC: " + _request + " signalled", llDebug);
-
-	if (_request == "open") {
-		if (!instance) init_instance();
-		if (instance) instance->set_status(dsOpen);
+void Device::onSignal(DeviceRequest _request) {
+	switch (_request) {
+		case DeviceRequest::Open:
+			mlog(name, "MCAC: open signalled", LogLevel::Debug);
+			if (!instance) init_instance();
+			if (instance) instance->set_status(DeviceStatus::Open);
+			break;
+		default:
+			mlog(name, "MCAC: unknown signalled", LogLevel::Debug);
+			break;
 	}
-
-	return;
 }

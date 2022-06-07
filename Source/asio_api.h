@@ -2,18 +2,18 @@
 
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
-#include "asio/iasiodrv.h"
 
-#include <JuceHeader.h>
-#include "obs-utils/WinHandle.hpp"
+#include "asio/iasiodrv.h"
+#include "juce/JuceHeader.h"
+#include "obs/WinHandle.h"
 
 //==
 // per https://en.wikipedia.org/wiki/Sampling_(signal_processing)#Sampling_rate
 //
 const double standard_sample_rates[] = {
-8000.0, 11025.0, 16000.0, 22050.0, 32000.0, 37800.0, 44056.0, 44100.0,
-47250.0, 48000.0, 50000.0, 50400.0, 64000.0, 88200.0, 96000.0, 176400.0,
-192000.0, 352800.0, 2822400.0, 5644800.0, 11289600.0, 22579200.0
+	8000.0, 11025.0, 16000.0, 22050.0, 32000.0, 37800.0, 44056.0, 44100.0,
+	47250.0, 48000.0, 50000.0, 50400.0, 64000.0, 88200.0, 96000.0, 176400.0,
+	192000.0, 352800.0, 2822400.0, 5644800.0, 11289600.0, 22579200.0
 };
 const double default_sample_rate = 44100.0;
 
@@ -22,19 +22,19 @@ class AsioDevice {
 	int index = -1;
 
 	long driver_version = 0;
-	char driver_name[64] = { 0 };
+	char driver_name[64] = {};
 	
 	long min_buffer_size = 0, max_buffer_size = 0, preferred_buffer_size = 0, buffer_size_granularity = 0;
 	long input_latency = 0, output_latency = 0;
 	Array<double> supported_sample_rates;
 	bool output_ready_available = false;
 
-	ASIOBufferInfo buffer_infos[MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS] = { 0 };
+	ASIOBufferInfo buffer_infos[MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS] = {};
 
 	int output_samples_per_10ms = 0;
 
-	circlebuf input_buffers[MAX_INPUT_CHANNELS] = { 0 };
-	circlebuf *input_buffer_pointers[MAX_INPUT_CHANNELS] = { 0 };
+	circlebuf input_buffers[MAX_INPUT_CHANNELS] = {};
+	circlebuf *input_buffer_pointers[MAX_INPUT_CHANNELS] = {};
 
 	WinHandle stop_signal, receive_signal;
 	WinHandle capture_thread;
@@ -49,6 +49,7 @@ class AsioDevice {
 
 public:
 	long input_channels_number = 0, output_channels_number = 0;
+	byte active_channels_count = 0;
 	StringArray input_channel_names, output_channel_names;
 	double sample_rate = 0.0;
 	long sample_type = 0;
@@ -66,17 +67,14 @@ private:
 	void initialize_channel_names();
 	void initialize_latencies();
 	bool switch_status();
-
-private:
 	void push_received_buffers(int buffer_index);
 
 public:
 	String name;
 	DeviceStatus status, plan;
 
-	void set_status(enum DeviceStatus);
+	void set_status(DeviceStatus);
 
-public:
 	AsioDevice(IASIO *driver, int index);
 	~AsioDevice();
 
@@ -94,6 +92,7 @@ public:
 	}
 
 	void set_sample_rate(double);
+	byte update_active_channels();
 };
 
 static inline uint32_t littleEndianInt(const void* const bytes) noexcept {
@@ -113,14 +112,12 @@ inline void try_release(IASIO* driver) {
 	__except (EXCEPTION_EXECUTE_HANDLER) {}
 }
 
-inline void mlog(String device, String message, LogLevel message_level = llInfo) {
+inline void mlog(String device, String message, LogLevel message_level = LogLevel::Info) {
 	extern FileLogger* logger;
 	extern LogLevel log_level;
-	const char* level_labels[] = { "DEBUG", "INFO", "WARNING", "ERROR", "FATAL" };
 
 	if (logger && message_level >= log_level)
 		logger->logMessage(Time::getCurrentTime().formatted("%Y-%m-%d_%H-%M-%S") + " [" + device + "] " + level_labels[(int)message_level] + ": " + message);
 
-	if (message_level == llFatal) throw message;
+	if (message_level == LogLevel::Fatal) throw message;
 }
-

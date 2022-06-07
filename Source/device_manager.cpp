@@ -1,5 +1,4 @@
 #include "core.h"
-#include "asio_api.h"
 #include "device.h"
 #include "device_manager.h"
 
@@ -54,24 +53,18 @@ void DeviceManager::cleanup_except(int active_device_index) {
 	}
 }
 
-const String* DeviceManager::get_device_names() {
-	return device_names;
-}
-
 void DeviceManager::read_device_names() {
-	for (int index = 0; index < MAX_CONCURRENT_DEVICES; index += 1) {
-		device_names[index].clear();
-	}
+	for (String& device_name : device_names) device_name.clear();
 
-	HKEY asio_root_key = 0;
+	HKEY asio_root_key = nullptr;
 	int index = 0;
-	CLSID clsid;
+	CLSID clsid = {};
 	const WCHAR* software_asio = L"SOFTWARE\\ASIO";
 	const String asio_root_path = String(L"HKEY_LOCAL_MACHINE\\") + software_asio + L"\\";
 	const String classes_clsid_path = String(L"HKEY_CLASSES_ROOT\\CLSID\\");
 
 	if (ERROR_SUCCESS == RegOpenKeyW(HKEY_LOCAL_MACHINE, software_asio, &asio_root_key)) {
-		WCHAR device_key_name[256] = { 0 };
+		WCHAR device_key_name[256] = {};
 		while (ERROR_SUCCESS == RegEnumKeyW(asio_root_key, index, device_key_name, sizeof(device_key_name) / sizeof(WCHAR))) {
 			String description = juce::WindowsRegistry::getValue(asio_root_path + String(device_key_name) + L"\\Description");
 			String clsid_string = juce::WindowsRegistry::getValue(asio_root_path + String(device_key_name) + L"\\CLSID");
@@ -94,5 +87,5 @@ void DeviceManager::read_device_names() {
 
 AsioDevice* DeviceManager::get_instance(int index) {
 	Device* device = devices[index];
-	return device ? device->get_instance() : nullptr;
+	return device ? device->instance : nullptr;
 }

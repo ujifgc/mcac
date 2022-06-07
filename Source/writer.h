@@ -1,6 +1,7 @@
 #pragma once
 
-#include "shlobj_core.h"
+#include <shlobj_core.h>
+
 #include "coreaudio-writer.h"
 
 extern HMODULE coreaudio_library;
@@ -12,11 +13,11 @@ extern HMODULE coreaudio_library;
 inline bool load_core_audio() {
 	if (coreaudio_library) return true;
 
-	WCHAR common_folder[2 * MAX_PATH] = { 0 };
-	SHGetFolderPathW(NULL, CSIDL_PROGRAM_FILES_COMMON, NULL, 0, common_folder);
-	wcscat(common_folder, L"\\Apple\\Apple Application Support");
+	WCHAR toolbox_path[TEMPORARY_BUFFER_SIZE] = {};
+	SHGetFolderPathW(NULL, CSIDL_PROGRAM_FILES_COMMON, NULL, 0, toolbox_path);
+	wcscat(toolbox_path, L"\\Apple\\Apple Application Support");
 
-	SetDllDirectoryW(common_folder);
+	SetDllDirectoryW(toolbox_path);
 	coreaudio_library = LoadLibrary("CoreAudioToolbox.dll");
 	SetDllDirectoryW(NULL);
 
@@ -37,16 +38,14 @@ inline bool load_core_audio() {
 }
 
 class Writer {
-	AudioConverterRef converter = nullptr;
+	AudioConverterPtr converter = nullptr;
 	unsigned bytes_per_input_packet = 0;
 	unsigned sample_rate = 0;
-	struct circlebuf output_buffer = { 0 };
+	circlebuf output_buffer = {}, zero_buffer = {};
 	circlebuf** input_buffers = nullptr;
 	FILE* file = nullptr;
 	bool stop = true;
 	CRITICAL_SECTION file_section;
-	Array<int> bitrates;
-	int qualities[6] = { 0, 16, 32, 64, 96, 127 };
 	class AsioDevice* device = nullptr;
 	bool core_audio_ready = false;
 
@@ -54,13 +53,12 @@ public:
 	String message;
 	byte channels = 0;
 
-	Writer(class AsioDevice*);
+	Writer();
 	~Writer();
-	void init();
-	void init(double _sample_rate);
+	void init(double _sample_rate = 0.0f, byte active_channels_count = 0);
 	void uninit();
 	bool open();
 	void close(bool report = true);
-	static OSStatus input_data_provider(AudioConverterRef inAudioConverter, UInt32* ioNumberDataPackets, AudioBufferList* ioData, AudioStreamPacketDescription** outDataPacketDescription, void* inUserData);
+	static OSStatus input_data_provider(AudioConverterPtr inAudioConverter, UInt32* ioNumberDataPackets, AudioBufferList* ioData, AudioStreamPacketDescription** outDataPacketDescription, void* inUserData);
 	void write_packet(circlebuf **_input_buffers);
 };

@@ -2,14 +2,14 @@
 
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
-#include <JuceHeader.h>
-#include "core.h"
-#include "asio_api.h"
-#include "device.h"
-#include "device_manager.h"
+
+#include "juce/JuceHeader.h"
 
 #define APP_NAME "MultiChannelAudioCapture"
 #define ACTIVE_DEVICE_INI_KEY "device"
+#define ACTIVE_CHANNELS_INI_KEY "active_channels"
+#define OUTPUT_FOLDER_INI_KEY "output_folder_path"
+#define ENCODER_QUALITY_INI_KEY "encoder_quality"
 
 extern String settings_file;
 extern String appdata_folder;
@@ -20,12 +20,10 @@ extern class MainComponent* main_component;
 extern class Writer* writer;
 extern CRITICAL_SECTION writer_section;
 extern bool active_channels[MAX_INPUT_CHANNELS];
-extern int active_channels_count;
-extern int shifted_channel_indexes[MAX_INPUT_CHANNELS];
 
 void WriteSettings(String key, String value);
 String ReadSettingsString(String key, String default_value = "");
-String getTitle();
+String getMainTitle();
 
 class Volumeter : public Component {
     void paint(Graphics& g) override {
@@ -81,18 +79,7 @@ private:
     void CreateMessageWindow();
     void onDeviceChange();
     void onRestartRequest(String device_name);
-
-    void handleAsyncUpdate(void) {
-        extern float buffer_magnitude[MAX_INPUT_CHANNELS];
-
-        if (!device || device->get_device_status() != dsOpen) return;
-
-        for (int i = 0; i < device->get_instance()->input_channels_number; i += 1) {
-            if (shifted_channel_indexes[i] == -1) continue;
-            int width = (int)round(RANGE_DB + 1.0 + magnitude_to_db(buffer_magnitude[i]));
-            volumeter[shifted_channel_indexes[i]].setBounds(325 - width, 120 + 30 * shifted_channel_indexes[i], width, 20);
-        }
-    };
+    void handleAsyncUpdate();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

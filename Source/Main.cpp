@@ -1,23 +1,21 @@
+#include "core.h"
 #include "MainComponent.h"
 
 String settings_file;
 String appdata_folder;
 String instance_name = "main";
-FileLogger *logger;
-LogLevel log_level = llDebug;
-MainComponent* main_component;
+FileLogger *logger = nullptr;
+LogLevel log_level = LogLevel::Debug;
+MainComponent* main_component = nullptr;
 
-//==============================================================================
 class MCACApplication  : public juce::JUCEApplication {
 public:
-    //==============================================================================
     MCACApplication() {}
 
     const juce::String getApplicationName() override       { return ProjectInfo::projectName; }
     const juce::String getApplicationVersion() override    { return ProjectInfo::versionString; }
     bool moreThanOneInstanceAllowed() override             { return true; }
 
-    //==============================================================================
     void initialise (const juce::String& commandLine) override {
         if (commandLine != "") instance_name = commandLine;
 
@@ -55,17 +53,16 @@ public:
     class MainWindow    : public juce::DocumentWindow {
     public:
         MainWindow (juce::String name) : DocumentWindow (name, juce::Desktop::getInstance().getDefaultLookAndFeel() .findColour (juce::ResizableWindow::backgroundColourId), DocumentWindow::allButtons) {
-            setUsingNativeTitleBar (true);
+            setUsingNativeTitleBar(true);
             main_component = new MainComponent();
-            setContentOwned (main_component, true);
+            setContentOwned(main_component, true);
 
             setResizable(true, true);
             const int fixed_width = 10 + 315 + 20 + 285 + 10;
             setResizeLimits(fixed_width, 300, 8000, 8000);
-            centreWithSize (getWidth(), getHeight());
-            setName(getTitle());
-
-            setVisible (true);
+            centreWithSize(getWidth(), getHeight());
+            setName(getMainTitle());
+            setVisible(true);
         }
 
         void closeButtonPressed() override {

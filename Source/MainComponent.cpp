@@ -1,14 +1,15 @@
+#include "core.h"
+#include "device.h"
+#include "device_manager.h"
 #include "MainComponent.h"
 #include "writer.h"
 
 HWND message_window = NULL;
 DeviceManager* device_manager = nullptr;
 String output_folder_path;
-float last_buffer_magnitude[MAX_INPUT_CHANNELS] = { 0 };
-float buffer_magnitude[MAX_INPUT_CHANNELS] = { 0 };
-bool active_channels[MAX_INPUT_CHANNELS] = { 0 };
-int active_channels_count = 0;
-int shifted_channel_indexes[MAX_INPUT_CHANNELS] = { 0 };
+float last_buffer_magnitude[MAX_INPUT_CHANNELS] = {};
+float buffer_magnitude[MAX_INPUT_CHANNELS] = {};
+bool active_channels[MAX_INPUT_CHANNELS] = {};
 
 LRESULT CALLBACK MainComponent::message_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
     if (message < WM_USER) return DefWindowProc(hwnd, message, wparam, lparam);
@@ -31,7 +32,7 @@ LRESULT CALLBACK MainComponent::message_window_proc(HWND hwnd, UINT message, WPA
         AsioDevice* instance = device_manager->get_instance(index);
         if (instance) {
             main_component->showStatus(instance->status, device_name);
-            if (instance->status == dsOpen) main_component->resized();
+            if (instance->status == DeviceStatus::Open) main_component->resized();
         }
         break;
     }
@@ -45,6 +46,9 @@ LRESULT CALLBACK MainComponent::message_window_proc(HWND hwnd, UINT message, WPA
         break;
     case WM_USER_CLEANUP:
         device_manager->cleanup_except(index);
+        break;
+    case WM_USER_ASYNC_UPDATE:
+        main_component->handleAsyncUpdate();
         break;
     }
 
@@ -92,12 +96,12 @@ MainComponent::MainComponent() {
     ui_writer_stop_button.addListener(this);
 
     for (int i = 0; i < MAX_INPUT_CHANNELS; i += 1) {
-        addAndMakeVisible(ui_device_channels_list[i],10);
-        addAndMakeVisible(volumeter[i],5);
+        addAndMakeVisible(ui_device_channels_list[i], 10);
+        addAndMakeVisible(volumeter[i], 5);
         ui_device_channels_list[i].addListener(this);
     }
 
-    String active_channels_string = ReadSettingsString("active_channels", "");
+    String active_channels_string = ReadSettingsString(ACTIVE_CHANNELS_INI_KEY, "");
     StringArray tokens, active_channel_indexes;
     tokens.addTokens(active_channels_string, ",", "\"");
     memset(active_channels, 0, sizeof(active_channels));
@@ -105,7 +109,6 @@ MainComponent::MainComponent() {
         active_channel_indexes.add(tokens[i]);
         active_channels[tokens[i].getIntValue()] = true;
     }
-    active_channels_count = active_channel_indexes.size();
     for (String channel : active_channel_indexes) {
         int channel_index = channel.getIntValue();
         if (channel_index >= MAX_INPUT_CHANNELS) continue;
@@ -116,7 +119,7 @@ MainComponent::MainComponent() {
 
     InitializeCriticalSection(&writer_section);
     device_manager = new DeviceManager();
-    const String* device_names_array = device_manager->get_device_names();
+    const String* device_names_array = device_manager->device_names;
     StringArray device_names = StringArray(device_names_array, device_manager->devices_count);
     ui_devices_select.addItemList(device_names, ID_BASE);
 
@@ -152,7 +155,7 @@ void MainComponent::paint (Graphics& g) {
 }
 
 void MainComponent::resized() {
-    if (device != nullptr && device->get_device_status() == dsOpen) {
+    if (device != nullptr && device->get_device_status() == DeviceStatus::Open) {
         ui_device_sample_rate.setText(String(device->get_sample_rate(), 0), dontSendNotification);
         ui_device_sample_type.setText(device->get_sample_type() == ASIOSTInt32LSB ? "Int32" : "Float32", dontSendNotification);
         ui_device_in_channels.setText("In: " + String(device->get_input_channel_names().size()), dontSendNotification);
@@ -187,7 +190,7 @@ void MainComponent::resized() {
     ui_writer_start_button.setBounds(right_column_x + 5, 95, 102, 30);
     ui_writer_stop_button.setBounds(getWidth() - 10 - 100, 95, 102, 30);
 
-    output_folder_path = ReadSettingsString("output_folder_path", appdata_folder);
+    output_folder_path = ReadSettingsString(OUTPUT_FOLDER_INI_KEY, appdata_folder);
     File output_folder(output_folder_path);
     String short_path = (output_folder_path.length() < right_column_width / 9.3) ? output_folder_path : (output_folder_path.substring(0, 2) + "...\\" + output_folder.getFileName());
     ui_writer_output_folder_path.setText(short_path, dontSendNotification);
@@ -201,7 +204,7 @@ void MainComponent::resized() {
 
 int MainComponent::drawChannels(int x, int y, int w, int h) {
     int height = 0;
-    if (device != nullptr && device->get_device_status() == dsOpen) {
+    if (device != nullptr && device->get_device_status() == DeviceStatus::Open) {
         StringArray channel_names = device->get_input_channel_names();
         int channels_count = channel_names.size();
         if (channels_count > MAX_INPUT_CHANNELS) channels_count = MAX_INPUT_CHANNELS;
@@ -227,7 +230,7 @@ int MainComponent::drawChannels(int x, int y, int w, int h) {
 }
 
 void MainComponent::onDeviceChange() {
-    String device_name = device_manager->get_device_names()[ui_devices_select.getSelectedId() - ID_BASE];
+    const String device_name = device_manager->device_names[ui_devices_select.getSelectedId() - ID_BASE];
     WriteSettings(ACTIVE_DEVICE_INI_KEY, device_name);
 
     for (int i = 0; i < MAX_INPUT_CHANNELS; i += 1) {
@@ -241,7 +244,7 @@ void MainComponent::onDeviceChange() {
 }
 
 void MainComponent::onRestartRequest(String device_name) {
-    String selected_device_name = device_manager->get_device_names()[ui_devices_select.getSelectedId() - ID_BASE];
+    const String selected_device_name = device_manager->device_names[ui_devices_select.getSelectedId() - ID_BASE];
     if (device_name == selected_device_name) {
         device_manager->cleanup(device_name);
         device = device_manager->create_device(device_name);
@@ -253,7 +256,7 @@ void MainComponent::onRestartRequest(String device_name) {
 void MainComponent::showWriterStatus(String text, Colour color) {
     ui_writer_status_message.setColour(Label::textColourId, color);
     ui_writer_status_message.setText(text, dontSendNotification);
-    mlog("MCAC Writer", text, color == Colours::yellow ? llError : llInfo);
+    mlog("MCAC Writer", text, color == Colours::yellow ? LogLevel::Error : LogLevel::Info);
 }
 
 static int retries = 0;
@@ -266,12 +269,12 @@ void MainComponent::showStatus(String text, Colour color, String device_name) {
         retries += 1;
         text += " Offline: " + String(retries) + "s";
     }
-    String selected_device_name = device_manager->get_device_names()[ui_devices_select.getSelectedId() - ID_BASE];
+    const String selected_device_name = device_manager->device_names[ui_devices_select.getSelectedId() - ID_BASE];
     if (device_name == selected_device_name) {
         ui_device_status_message.setColour(Label::textColourId, color);
         ui_device_status_message.setText(text, dontSendNotification);
     }
-    mlog(device_name, text, color == Colours::yellow ? llError : llInfo);
+    mlog(device_name, text, color == Colours::yellow ? LogLevel::Error : LogLevel::Info);
 }
 
 void MainComponent::showStatus(DeviceStatus _status, String device_name) {
@@ -279,13 +282,15 @@ void MainComponent::showStatus(DeviceStatus _status, String device_name) {
     Colour color;
 
     switch (_status) {
-    case dsNone:
+    case DeviceStatus::None:
         text = "Error", color = Colours::yellow;
         break;
-    case dsInitialized:
+    case DeviceStatus::Initialized:
         return;
-    case dsOpen:
+    case DeviceStatus::Open:
         text = "Ready", color = Colours::lightblue;
+        break;
+    default:
         break;
     }
 
@@ -297,7 +302,7 @@ void MainComponent::buttonClicked(juce::Button* button) {
         FileChooser browse_folder("Please select output folder", output_folder_path);
         if (browse_folder.browseForDirectory()) {
             output_folder_path = browse_folder.getResult().getFullPathName();
-            WriteSettings("output_folder_path", output_folder_path);
+            WriteSettings(OUTPUT_FOLDER_INI_KEY, output_folder_path);
             resized();
         }
         return;
@@ -318,17 +323,15 @@ void MainComponent::buttonClicked(juce::Button* button) {
     }
     
     if (button == &ui_writer_stop_button) {
-        if (writer) {
-            writer->close();
-            ui_writer_start_button.setEnabled(true);
-            ui_writer_stop_button.setEnabled(false);
-        }
+        if (writer) writer->close();
+        ui_writer_start_button.setEnabled(true);
+        ui_writer_stop_button.setEnabled(false);
         return;
     }
 
     int channel_index = int(button - (Button*)ui_device_channels_list);
     if (channel_index >= 0 && channel_index < MAX_INPUT_CHANNELS) {
-        String active_channels_string = ReadSettingsString("active_channels", "");
+        String active_channels_string = ReadSettingsString(ACTIVE_CHANNELS_INI_KEY, "");
         StringArray tokens, active_channel_indexes;
         tokens.addTokens(active_channels_string, ",", "\"");
         memset(active_channels, 0, sizeof(active_channels));
@@ -344,15 +347,32 @@ void MainComponent::buttonClicked(juce::Button* button) {
             active_channel_indexes.removeString(String(channel_index));
             active_channels[channel_index] = false;
         }
+
+        byte active_channels_count = 0;
+        if (device) active_channels_count = device->update_active_channels();
         active_channel_indexes.sortNatural();
         active_channels_string = active_channel_indexes.joinIntoString(",");
-        WriteSettings("active_channels", active_channels_string);
+        WriteSettings(ACTIVE_CHANNELS_INI_KEY, active_channels_string);
 
         writer->uninit();
-        writer->init();
+
+        ui_writer_start_button.setEnabled(true);
+        ui_writer_stop_button.setEnabled(false);
+
+        writer->init(0, active_channels_count);
         
         for (int i = 0; i < MAX_INPUT_CHANNELS; i += 1) {
             volumeter[i].setBounds(325, 120 + 30 * i, 0, 20);
         }
+    }
+}
+
+void MainComponent::handleAsyncUpdate() {
+    extern float buffer_magnitude[MAX_INPUT_CHANNELS];
+
+    for (int i = 0; i < MAX_INPUT_CHANNELS; i += 1) {
+        //if (shifted_channel_indexes[i] == -1) continue;
+        int width = (int)round(RANGE_DB + 1.0 + magnitude_to_db(buffer_magnitude[i]));
+        volumeter[i].setBounds(325 - width, 120 + 30 * i, width, 20);
     }
 }

@@ -1305,21 +1305,6 @@
     <ClCompile Include="C:\JUCE\modules\juce_gui_basics\juce_gui_basics.cpp">
       <Filter>JUCE Modules\juce_gui_basics</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\JuceLibraryCode\include_juce_core.cpp">
-      <Filter>JUCE Library Code</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\JuceLibraryCode\include_juce_data_structures.cpp">
-      <Filter>JUCE Library Code</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\JuceLibraryCode\include_juce_events.cpp">
-      <Filter>JUCE Library Code</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\JuceLibraryCode\include_juce_graphics.cpp">
-      <Filter>JUCE Library Code</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\JuceLibraryCode\include_juce_gui_basics.cpp">
-      <Filter>JUCE Library Code</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source\asio_api.cpp">
       <Filter>MultiChannelAudioCapture\Source</Filter>
     </ClCompile>
@@ -1334,6 +1319,21 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\writer.cpp">
       <Filter>MultiChannelAudioCapture\Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\juce\include_juce_core.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\juce\include_juce_data_structures.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\juce\include_juce_events.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\juce\include_juce_graphics.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\juce\include_juce_gui_basics.cpp">
+      <Filter>JUCE Library Code</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2462,19 +2462,10 @@
     <ClInclude Include="C:\JUCE\modules\juce_gui_basics\juce_gui_basics.h">
       <Filter>JUCE Modules\juce_gui_basics</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\JuceLibraryCode\JuceHeader.h">
-      <Filter>JUCE Library Code</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Source\asio_api.h">
       <Filter>MultiChannelAudioCapture\Source</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\asio_callbacks_wrapper.h">
-      <Filter>MultiChannelAudioCapture\Source</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Source\base.h">
-      <Filter>MultiChannelAudioCapture\Source</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Source\circlebuf.h">
       <Filter>MultiChannelAudioCapture\Source</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\core.h">

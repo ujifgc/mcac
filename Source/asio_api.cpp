@@ -1,13 +1,14 @@
 #include "core.h"
-#include "asio_api.h"
 #include "device.h"
 #include "device_manager.h"
 #include "asio_callbacks_wrapper.h"
 #include "writer.h"
-#include "MainComponent.h"
 
 extern HWND message_window;
 extern DeviceManager* device_manager;
+extern class Writer* writer;
+extern CRITICAL_SECTION writer_section;
+extern bool active_channels[MAX_INPUT_CHANNELS];
 
 void AsioDevice::refuse(long error, const char *message = "") {
 	if (error) {
@@ -24,8 +25,8 @@ void AsioDevice::refuse(long error, const char *message = "") {
 }
 
 AsioDevice::AsioDevice(IASIO *_driver, int _index) {
-	plan = dsNone;
-	status = dsNone;
+	plan = DeviceStatus::None;
+	status = DeviceStatus::None;
 	output_samples_per_10ms = int(default_sample_rate / 100);
 	driver = _driver;
 	index = _index;
@@ -54,14 +55,14 @@ bool AsioDevice::switch_status() {
 
 	try {
 		switch (plan) {
-		case dsNone:
+		case DeviceStatus::None:
 			uninit();
 			PostMessage(message_window, WM_USER_INPUT_STATUS, index, 0);
 			break;
-		case dsOpen:
+		case DeviceStatus::Open:
 			if (!is_initialized) init();
 			if (!is_open) open();
-			mlog(name, "MCAC: status set to open", llDebug);
+			mlog(name, "MCAC: status set to open", LogLevel::Debug);
 			PostMessage(message_window, WM_USER_INPUT_STATUS, index, 0);
 			break;
 		}
@@ -81,7 +82,7 @@ bool AsioDevice::switch_status() {
 	return (status == plan);
 }
 
-void AsioDevice::set_status(enum DeviceStatus new_status) {
+void AsioDevice::set_status(DeviceStatus new_status) {
 	plan = new_status;
 	switch_status();
 }
@@ -117,14 +118,14 @@ void AsioDevice::init() {
 	output_ready_available = !!driver->outputReady();
 
 	is_initialized = true;
-	status = dsInitialized;
+	status = DeviceStatus::Initialized;
 }
 
 void AsioDevice::uninit() {
 	if (is_open) close();
 
 	is_initialized = false;
-	status = dsNone;
+	status = DeviceStatus::None;
 }
 
 void AsioDevice::open() {
@@ -162,8 +163,9 @@ void AsioDevice::open() {
 		writer = nullptr;
 	}
 
-	writer = new Writer(this);
-	writer->init(sample_rate);
+	update_active_channels();
+	writer = new Writer();
+	writer->init(sample_rate, active_channels_count);
 	LeaveCriticalSection(&writer_section);
 
 	capture_thread = CreateThread(nullptr, 0, CaptureThread, this, 0, nullptr);
@@ -172,7 +174,7 @@ void AsioDevice::open() {
 	refuse(error);
 
 	is_open = true;
-	status = dsOpen;
+	status = DeviceStatus::Open;
 }
 
 void AsioDevice::close() {
@@ -200,7 +202,7 @@ void AsioDevice::close() {
 		driver_buffers_allocated = false;
 	}
 
-	status = dsInitialized;
+	status = DeviceStatus::Initialized;
 
 	ResetEvent(stop_signal);
 }
@@ -321,8 +323,6 @@ long AsioDevice::message(int device_index, long selector, long value, void*, dou
 		device->reinit();
 		return 1;
 	case kAsioResyncRequest:
-		device->reopen();
-		return 1;
 	case kAsioLatenciesChanged:
 		device->reopen();
 		return 1;
@@ -331,7 +331,7 @@ long AsioDevice::message(int device_index, long selector, long value, void*, dou
 	case kAsioSupportsTimeCode:
 		return 0;
 	case kAsioOverload:
-		mlog(device->name, "driver reported overload", llWarn);
+		mlog(device->name, "driver reported overload", LogLevel::Warn);
 		return 1;
 	}
 	return 0;
@@ -379,36 +379,31 @@ ASIOTime* AsioDevice::buffer_switch_time_info(int device_index, ASIOTime* timeIn
 
 	return nullptr;
 
-	UNREFERENCED_PARAMETER(timeInfo);
-	UNREFERENCED_PARAMETER(processNow);
+	(void)timeInfo;
+	(void)processNow;
 }
 
 static ULONGLONG last_time = 0;
 
 void AsioDevice::push_received_buffers(int buffer_index) {
-	int skipped = 0;
-
-	for (int channel = 0; channel < input_channels_number; channel += 1) {
-		if (active_channels[channel]) {
-			size_t data_size = input_buffers[channel - skipped].size;
-			circlebuf_upsize(&input_buffers[channel - skipped], data_size + (size_t)preferred_buffer_size * BYTES_PER_SAMPLE);
-			if (sample_type == ASIOSTInt32LSB) {
-				convertInt32ToFloat((const char*)buffer_infos[channel].buffers[buffer_index], (float*)circlebuf_data(&input_buffers[channel - skipped], data_size), preferred_buffer_size);
-			}
-			else {
-				memcpy(circlebuf_data(&input_buffers[channel - skipped], data_size), buffer_infos[channel].buffers[buffer_index], (size_t)preferred_buffer_size * BYTES_PER_SAMPLE);
-			}
-		}
-		else {
-			skipped += 1;
-		}
-	}
-
 	extern float last_buffer_magnitude[MAX_INPUT_CHANNELS];
 	extern float buffer_magnitude[MAX_INPUT_CHANNELS];
 
-	for (int channel = 0; channel < active_channels_count; channel++) {
-		last_buffer_magnitude[channel] = ((float*)circlebuf_data(&input_buffers[channel], 0))[0];
+	for (int channel = 0; channel < input_channels_number; channel += 1) {
+		if (active_channels[channel]) {
+			size_t data_size = input_buffers[channel].size;
+			circlebuf_upsize(&input_buffers[channel], data_size + (size_t)preferred_buffer_size * BYTES_PER_SAMPLE);
+			if (sample_type == ASIOSTInt32LSB) {
+				convertInt32ToFloat((const char*)buffer_infos[channel].buffers[buffer_index], (float*)circlebuf_data(&input_buffers[channel], data_size), preferred_buffer_size);
+			}
+			else {
+				memcpy(circlebuf_data(&input_buffers[channel], data_size), buffer_infos[channel].buffers[buffer_index], (size_t)preferred_buffer_size * BYTES_PER_SAMPLE);
+			}
+			last_buffer_magnitude[channel] = ((float*)circlebuf_data(&input_buffers[channel], 0))[0];
+		}
+		else {
+			last_buffer_magnitude[channel] = 0.0f;
+		}
 	}
 
 	for (int channel = 0; channel < input_channels_number; channel += 1) {
@@ -422,7 +417,20 @@ void AsioDevice::push_received_buffers(int buffer_index) {
 
 	ULONGLONG time = GetTickCount64();
 	if (time > last_time + 3) {
-		main_component->triggerAsyncUpdate();
+		PostMessage(message_window, WM_USER_ASYNC_UPDATE, 0, 0);
 		last_time = time;
 	}
+}
+
+byte AsioDevice::update_active_channels() {
+	active_channels_count = 0;
+	memset(input_buffer_pointers, 0, sizeof(input_buffer_pointers));
+	for (int i = 0; i < MAX_INPUT_CHANNELS; i++) {
+		if (active_channels[i]) {
+			input_buffer_pointers[active_channels_count] = &input_buffers[i];
+			active_channels_count += 1;
+		}
+	}
+
+	return active_channels_count;
 }

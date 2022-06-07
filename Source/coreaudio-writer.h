@@ -14,8 +14,7 @@ enum {
     kVariableLengthArray = 1,
 };
 
-struct OpaqueAudioConverter;
-typedef struct OpaqueAudioConverter *AudioConverterRef;
+typedef void *AudioConverterPtr;
 typedef UInt32 AudioConverterPropertyID;
 
 struct AudioValueRange {
@@ -76,7 +75,7 @@ struct AudioChannelLayout {
 typedef struct AudioChannelLayout AudioChannelLayout;
 
 typedef OSStatus (*AudioConverterComplexInputDataProc)(
-	AudioConverterRef inAudioConverter,
+	AudioConverterPtr inAudioConverter,
 	UInt32 *ioNumberDataPackets,
 	AudioBufferList *ioData,
 	AudioStreamPacketDescription **outDataPacketDescription,
@@ -317,87 +316,79 @@ enum {
 #define kAudioChannelLayoutTag_Unknown 0xFFFF0000
 enum
 {
-	kAudioChannelLayoutTag_UseChannelDescriptions = (0L << 16) | 0,     // use the array of AudioChannelDescriptions to define the mapping.
-	kAudioChannelLayoutTag_UseChannelBitmap = (1L << 16) | 0,     // use the bitmap to define the mapping.
+	kAudioChannelLayoutTag_UseChannelDescriptions = (0L << 16) | 0,         // use the array of AudioChannelDescriptions to define the mapping.
+	kAudioChannelLayoutTag_UseChannelBitmap = (1L << 16) | 0,               // use the bitmap to define the mapping.
 
-	kAudioChannelLayoutTag_Mono = (100L << 16) | 1,   // a standard mono stream
-	kAudioChannelLayoutTag_Stereo = (101L << 16) | 2,   // a standard stereo stream (L R) - implied playback
-	kAudioChannelLayoutTag_StereoHeadphones = (102L << 16) | 2,   // a standard stereo stream (L R) - implied headphone playbac
-	kAudioChannelLayoutTag_MatrixStereo = (103L << 16) | 2,   // a matrix encoded stereo stream (Lt, Rt)
-	kAudioChannelLayoutTag_MidSide = (104L << 16) | 2,   // mid/side recording
-	kAudioChannelLayoutTag_XY = (105L << 16) | 2,   // coincident mic pair (often 2 figure 8's)
-	kAudioChannelLayoutTag_Binaural = (106L << 16) | 2,   // binaural stereo (left, right)
-	kAudioChannelLayoutTag_Ambisonic_B_Format = (107L << 16) | 4,   // W, X, Y, Z
-
-	kAudioChannelLayoutTag_Quadraphonic = (108L << 16) | 4,   // front left, front right, back left, back right
-
-	kAudioChannelLayoutTag_Pentagonal = (109L << 16) | 5,   // left, right, rear left, rear right, center
-
-	kAudioChannelLayoutTag_Hexagonal = (110L << 16) | 6,   // left, right, rear left, rear right, center, rear
-
-	kAudioChannelLayoutTag_Octagonal = (111L << 16) | 8,   // front left, front right, rear left, rear right,
-	// front center, rear center, side left, side right
-
-	kAudioChannelLayoutTag_Cube = (112L << 16) | 8,   // left, right, rear left, rear right, top left, top right, top rear left, top rear right
+	kAudioChannelLayoutTag_Mono = (100L << 16) | 1,                         // a standard mono stream
+	kAudioChannelLayoutTag_Stereo = (101L << 16) | 2,                       // a standard stereo stream (L R) - implied playback
+	kAudioChannelLayoutTag_StereoHeadphones = (102L << 16) | 2,             // a standard stereo stream (L R) - implied headphone playbac
+	kAudioChannelLayoutTag_MatrixStereo = (103L << 16) | 2,                 // a matrix encoded stereo stream (Lt, Rt)
+	kAudioChannelLayoutTag_MidSide = (104L << 16) | 2,                      // mid/side recording
+	kAudioChannelLayoutTag_XY = (105L << 16) | 2,                           // coincident mic pair (often 2 figure 8's)
+	kAudioChannelLayoutTag_Binaural = (106L << 16) | 2,                     // binaural stereo (left, right)
+	kAudioChannelLayoutTag_Ambisonic_B_Format = (107L << 16) | 4,           // W, X, Y, Z
+	kAudioChannelLayoutTag_Quadraphonic = (108L << 16) | 4,                 // front left, front right, back left, back right
+	kAudioChannelLayoutTag_Pentagonal = (109L << 16) | 5,                   // left, right, rear left, rear right, center
+	kAudioChannelLayoutTag_Hexagonal = (110L << 16) | 6,                    // left, right, rear left, rear right, center, rear
+	kAudioChannelLayoutTag_Octagonal = (111L << 16) | 8,                    // front left, front right, rear left, rear right, front center, rear center, side left, side right
+	kAudioChannelLayoutTag_Cube = (112L << 16) | 8,                         // left, right, rear left, rear right, top left, top right, top rear left, top rear right
 
 	//  MPEG defined layouts
 	kAudioChannelLayoutTag_MPEG_1_0 = kAudioChannelLayoutTag_Mono,          //  C
 	kAudioChannelLayoutTag_MPEG_2_0 = kAudioChannelLayoutTag_Stereo,        //  L R
-	kAudioChannelLayoutTag_MPEG_3_0_A = (113L << 16) | 3,                       //  L R C
-	kAudioChannelLayoutTag_MPEG_3_0_B = (114L << 16) | 3,                       //  C L R
-	kAudioChannelLayoutTag_MPEG_4_0_A = (115L << 16) | 4,                       //  L R C Cs
-	kAudioChannelLayoutTag_MPEG_4_0_B = (116L << 16) | 4,                       //  C L R Cs
-	kAudioChannelLayoutTag_MPEG_5_0_A = (117L << 16) | 5,                       //  L R C Ls Rs
-	kAudioChannelLayoutTag_MPEG_5_0_B = (118L << 16) | 5,                       //  L R Ls Rs C
-	kAudioChannelLayoutTag_MPEG_5_0_C = (119L << 16) | 5,                       //  L C R Ls Rs
-	kAudioChannelLayoutTag_MPEG_5_0_D = (120L << 16) | 5,                       //  C L R Ls Rs
-	kAudioChannelLayoutTag_MPEG_5_1_A = (121L << 16) | 6,                       //  L R C LFE Ls Rs
-	kAudioChannelLayoutTag_MPEG_5_1_B = (122L << 16) | 6,                       //  L R Ls Rs C LFE
-	kAudioChannelLayoutTag_MPEG_5_1_C = (123L << 16) | 6,                       //  L C R Ls Rs LFE
-	kAudioChannelLayoutTag_MPEG_5_1_D = (124L << 16) | 6,                       //  C L R Ls Rs LFE
-	kAudioChannelLayoutTag_MPEG_6_1_A = (125L << 16) | 7,                       //  L R C LFE Ls Rs Cs
-	kAudioChannelLayoutTag_MPEG_7_1_A = (126L << 16) | 8,                       //  L R C LFE Ls Rs Lc Rc
-	kAudioChannelLayoutTag_MPEG_7_1_B = (127L << 16) | 8,                       //  C Lc Rc L R Ls Rs LFE    (doc: IS-13818-7 MPEG2-AAC Table 3.1)
-	kAudioChannelLayoutTag_MPEG_7_1_C = (128L << 16) | 8,                       //  L R C LFE Ls Rs Rls Rrs
-	kAudioChannelLayoutTag_Emagic_Default_7_1 = (129L << 16) | 8,                       //  L R Ls Rs C LFE Lc Rc
-	kAudioChannelLayoutTag_SMPTE_DTV = (130L << 16) | 8,                       //  L R C LFE Ls Rs Lt Rt     (kAudioChannelLayoutTag_ITU_5_1 plus a matrix encoded stereo mix)
+	kAudioChannelLayoutTag_MPEG_3_0_A = (113L << 16) | 3,                   //  L R C
+	kAudioChannelLayoutTag_MPEG_3_0_B = (114L << 16) | 3,                   //  C L R
+	kAudioChannelLayoutTag_MPEG_4_0_A = (115L << 16) | 4,                   //  L R C Cs
+	kAudioChannelLayoutTag_MPEG_4_0_B = (116L << 16) | 4,                   //  C L R Cs
+	kAudioChannelLayoutTag_MPEG_5_0_A = (117L << 16) | 5,                   //  L R C Ls Rs
+	kAudioChannelLayoutTag_MPEG_5_0_B = (118L << 16) | 5,                   //  L R Ls Rs C
+	kAudioChannelLayoutTag_MPEG_5_0_C = (119L << 16) | 5,                   //  L C R Ls Rs
+	kAudioChannelLayoutTag_MPEG_5_0_D = (120L << 16) | 5,                   //  C L R Ls Rs
+	kAudioChannelLayoutTag_MPEG_5_1_A = (121L << 16) | 6,                   //  L R C LFE Ls Rs
+	kAudioChannelLayoutTag_MPEG_5_1_B = (122L << 16) | 6,                   //  L R Ls Rs C LFE
+	kAudioChannelLayoutTag_MPEG_5_1_C = (123L << 16) | 6,                   //  L C R Ls Rs LFE
+	kAudioChannelLayoutTag_MPEG_5_1_D = (124L << 16) | 6,                   //  C L R Ls Rs LFE
+	kAudioChannelLayoutTag_MPEG_6_1_A = (125L << 16) | 7,                   //  L R C LFE Ls Rs Cs
+	kAudioChannelLayoutTag_MPEG_7_1_A = (126L << 16) | 8,                   //  L R C LFE Ls Rs Lc Rc
+	kAudioChannelLayoutTag_MPEG_7_1_B = (127L << 16) | 8,                   //  C Lc Rc L R Ls Rs LFE    (doc: IS-13818-7 MPEG2-AAC Table 3.1)
+	kAudioChannelLayoutTag_MPEG_7_1_C = (128L << 16) | 8,                   //  L R C LFE Ls Rs Rls Rrs
+	kAudioChannelLayoutTag_Emagic_Default_7_1 = (129L << 16) | 8,           //  L R Ls Rs C LFE Lc Rc
+	kAudioChannelLayoutTag_SMPTE_DTV = (130L << 16) | 8,                    //  L R C LFE Ls Rs Lt Rt     (kAudioChannelLayoutTag_ITU_5_1 plus a matrix encoded stereo mix)
 
 	//  ITU defined layouts
-	kAudioChannelLayoutTag_ITU_1_0 = kAudioChannelLayoutTag_Mono,          //  C
-	kAudioChannelLayoutTag_ITU_2_0 = kAudioChannelLayoutTag_Stereo,        //  L R
-
-	kAudioChannelLayoutTag_ITU_2_1 = (131L << 16) | 3,                       //  L R Cs
-	kAudioChannelLayoutTag_ITU_2_2 = (132L << 16) | 4,                       //  L R Ls Rs
-	kAudioChannelLayoutTag_ITU_3_0 = kAudioChannelLayoutTag_MPEG_3_0_A,    //  L R C
-	kAudioChannelLayoutTag_ITU_3_1 = kAudioChannelLayoutTag_MPEG_4_0_A,    //  L R C Cs
-
-	kAudioChannelLayoutTag_ITU_3_2 = kAudioChannelLayoutTag_MPEG_5_0_A,    //  L R C Ls Rs
-	kAudioChannelLayoutTag_ITU_3_2_1 = kAudioChannelLayoutTag_MPEG_5_1_A,    //  L R C LFE Ls Rs
-	kAudioChannelLayoutTag_ITU_3_4_1 = kAudioChannelLayoutTag_MPEG_7_1_C,    //  L R C LFE Ls Rs Rls Rrs
+	kAudioChannelLayoutTag_ITU_1_0 = kAudioChannelLayoutTag_Mono,           //  C
+	kAudioChannelLayoutTag_ITU_2_0 = kAudioChannelLayoutTag_Stereo,         //  L R
+	kAudioChannelLayoutTag_ITU_2_1 = (131L << 16) | 3,                      //  L R Cs
+	kAudioChannelLayoutTag_ITU_2_2 = (132L << 16) | 4,                      //  L R Ls Rs
+	kAudioChannelLayoutTag_ITU_3_0 = kAudioChannelLayoutTag_MPEG_3_0_A,     //  L R C
+	kAudioChannelLayoutTag_ITU_3_1 = kAudioChannelLayoutTag_MPEG_4_0_A,     //  L R C Cs
+	kAudioChannelLayoutTag_ITU_3_2 = kAudioChannelLayoutTag_MPEG_5_0_A,     //  L R C Ls Rs
+	kAudioChannelLayoutTag_ITU_3_2_1 = kAudioChannelLayoutTag_MPEG_5_1_A,   //  L R C LFE Ls Rs
+	kAudioChannelLayoutTag_ITU_3_4_1 = kAudioChannelLayoutTag_MPEG_7_1_C,   //  L R C LFE Ls Rs Rls Rrs
 
 	// DVD defined layouts
-	kAudioChannelLayoutTag_DVD_0 = kAudioChannelLayoutTag_Mono,          // C (mono)
-	kAudioChannelLayoutTag_DVD_1 = kAudioChannelLayoutTag_Stereo,        // L R
-	kAudioChannelLayoutTag_DVD_2 = kAudioChannelLayoutTag_ITU_2_1,       // L R Cs
-	kAudioChannelLayoutTag_DVD_3 = kAudioChannelLayoutTag_ITU_2_2,       // L R Ls Rs
-	kAudioChannelLayoutTag_DVD_4 = (133L << 16) | 3,                       // L R LFE
-	kAudioChannelLayoutTag_DVD_5 = (134L << 16) | 4,                       // L R LFE Cs
-	kAudioChannelLayoutTag_DVD_6 = (135L << 16) | 5,                       // L R LFE Ls Rs
-	kAudioChannelLayoutTag_DVD_7 = kAudioChannelLayoutTag_MPEG_3_0_A,    // L R C
-	kAudioChannelLayoutTag_DVD_8 = kAudioChannelLayoutTag_MPEG_4_0_A,    // L R C Cs
-	kAudioChannelLayoutTag_DVD_9 = kAudioChannelLayoutTag_MPEG_5_0_A,    // L R C Ls Rs
+	kAudioChannelLayoutTag_DVD_0 = kAudioChannelLayoutTag_Mono,             // C (mono)
+	kAudioChannelLayoutTag_DVD_1 = kAudioChannelLayoutTag_Stereo,           // L R
+	kAudioChannelLayoutTag_DVD_2 = kAudioChannelLayoutTag_ITU_2_1,          // L R Cs
+	kAudioChannelLayoutTag_DVD_3 = kAudioChannelLayoutTag_ITU_2_2,          // L R Ls Rs
+	kAudioChannelLayoutTag_DVD_4 = (133L << 16) | 3,                        // L R LFE
+	kAudioChannelLayoutTag_DVD_5 = (134L << 16) | 4,                        // L R LFE Cs
+	kAudioChannelLayoutTag_DVD_6 = (135L << 16) | 5,                        // L R LFE Ls Rs
+	kAudioChannelLayoutTag_DVD_7 = kAudioChannelLayoutTag_MPEG_3_0_A,       // L R C
+	kAudioChannelLayoutTag_DVD_8 = kAudioChannelLayoutTag_MPEG_4_0_A,       // L R C Cs
+	kAudioChannelLayoutTag_DVD_9 = kAudioChannelLayoutTag_MPEG_5_0_A,       // L R C Ls Rs
 	kAudioChannelLayoutTag_DVD_10 = (136L << 16) | 4,                       // L R C LFE
 	kAudioChannelLayoutTag_DVD_11 = (137L << 16) | 5,                       // L R C LFE Cs
-	kAudioChannelLayoutTag_DVD_12 = kAudioChannelLayoutTag_MPEG_5_1_A,    // L R C LFE Ls Rs
+	kAudioChannelLayoutTag_DVD_12 = kAudioChannelLayoutTag_MPEG_5_1_A,      // L R C LFE Ls Rs
 	// 13 through 17 are duplicates of 8 through 12.
-	kAudioChannelLayoutTag_DVD_13 = kAudioChannelLayoutTag_DVD_8,         // L R C Cs
-	kAudioChannelLayoutTag_DVD_14 = kAudioChannelLayoutTag_DVD_9,         // L R C Ls Rs
-	kAudioChannelLayoutTag_DVD_15 = kAudioChannelLayoutTag_DVD_10,        // L R C LFE
-	kAudioChannelLayoutTag_DVD_16 = kAudioChannelLayoutTag_DVD_11,        // L R C LFE Cs
-	kAudioChannelLayoutTag_DVD_17 = kAudioChannelLayoutTag_DVD_12,        // L R C LFE Ls Rs
+	kAudioChannelLayoutTag_DVD_13 = kAudioChannelLayoutTag_DVD_8,           // L R C Cs
+	kAudioChannelLayoutTag_DVD_14 = kAudioChannelLayoutTag_DVD_9,           // L R C Ls Rs
+	kAudioChannelLayoutTag_DVD_15 = kAudioChannelLayoutTag_DVD_10,          // L R C LFE
+	kAudioChannelLayoutTag_DVD_16 = kAudioChannelLayoutTag_DVD_11,          // L R C LFE Cs
+	kAudioChannelLayoutTag_DVD_17 = kAudioChannelLayoutTag_DVD_12,          // L R C LFE Ls Rs
 	kAudioChannelLayoutTag_DVD_18 = (138L << 16) | 5,                       // L R Ls Rs LFE
-	kAudioChannelLayoutTag_DVD_19 = kAudioChannelLayoutTag_MPEG_5_0_B,    // L R Ls Rs C
-	kAudioChannelLayoutTag_DVD_20 = kAudioChannelLayoutTag_MPEG_5_1_B,    // L R Ls Rs C LFE
+	kAudioChannelLayoutTag_DVD_19 = kAudioChannelLayoutTag_MPEG_5_0_B,      // L R Ls Rs C
+	kAudioChannelLayoutTag_DVD_20 = kAudioChannelLayoutTag_MPEG_5_1_B,      // L R Ls Rs C LFE
 
 	// These layouts are recommended for AudioUnit usage
 	// These are the symmetrical layouts
@@ -406,106 +397,102 @@ enum
 	kAudioChannelLayoutTag_AudioUnit_6 = kAudioChannelLayoutTag_Hexagonal,
 	kAudioChannelLayoutTag_AudioUnit_8 = kAudioChannelLayoutTag_Octagonal,
 	// These are the surround-based layouts
-	kAudioChannelLayoutTag_AudioUnit_5_0 = kAudioChannelLayoutTag_MPEG_5_0_B,    // L R Ls Rs C
-	kAudioChannelLayoutTag_AudioUnit_6_0 = (139L << 16) | 6,                       // L R Ls Rs C Cs
-	kAudioChannelLayoutTag_AudioUnit_7_0 = (140L << 16) | 7,                       // L R Ls Rs C Rls Rrs
-	kAudioChannelLayoutTag_AudioUnit_5_1 = kAudioChannelLayoutTag_MPEG_5_1_A,    // L R C LFE Ls Rs
-	kAudioChannelLayoutTag_AudioUnit_6_1 = kAudioChannelLayoutTag_MPEG_6_1_A,    // L R C LFE Ls Rs Cs
-	kAudioChannelLayoutTag_AudioUnit_7_1 = kAudioChannelLayoutTag_MPEG_7_1_C,    // L R C LFE Ls Rs Rls Rrs
-	kAudioChannelLayoutTag_AudioUnit_7_1_Front = kAudioChannelLayoutTag_MPEG_7_1_A,    // L R C LFE Ls Rs Lc Rc
+	kAudioChannelLayoutTag_AudioUnit_5_0 = kAudioChannelLayoutTag_MPEG_5_0_B,       // L R Ls Rs C
+	kAudioChannelLayoutTag_AudioUnit_6_0 = (139L << 16) | 6,                        // L R Ls Rs C Cs
+	kAudioChannelLayoutTag_AudioUnit_7_0 = (140L << 16) | 7,                        // L R Ls Rs C Rls Rrs
+	kAudioChannelLayoutTag_AudioUnit_5_1 = kAudioChannelLayoutTag_MPEG_5_1_A,       // L R C LFE Ls Rs
+	kAudioChannelLayoutTag_AudioUnit_6_1 = kAudioChannelLayoutTag_MPEG_6_1_A,       // L R C LFE Ls Rs Cs
+	kAudioChannelLayoutTag_AudioUnit_7_1 = kAudioChannelLayoutTag_MPEG_7_1_C,       // L R C LFE Ls Rs Rls Rrs
+	kAudioChannelLayoutTag_AudioUnit_7_1_Front = kAudioChannelLayoutTag_MPEG_7_1_A, // L R C LFE Ls Rs Lc Rc
 
-	kAudioChannelLayoutTag_AAC_3_0 = kAudioChannelLayoutTag_MPEG_3_0_B,    // C L R
+	kAudioChannelLayoutTag_AAC_3_0 = kAudioChannelLayoutTag_MPEG_3_0_B,             // C L R
 	kAudioChannelLayoutTag_AAC_Quadraphonic = kAudioChannelLayoutTag_Quadraphonic,  // L R Ls Rs
-	kAudioChannelLayoutTag_AAC_4_0 = kAudioChannelLayoutTag_MPEG_4_0_B,    // C L R Cs
-	kAudioChannelLayoutTag_AAC_5_0 = kAudioChannelLayoutTag_MPEG_5_0_D,    // C L R Ls Rs
-	kAudioChannelLayoutTag_AAC_5_1 = kAudioChannelLayoutTag_MPEG_5_1_D,    // C L R Ls Rs Lfe
-	kAudioChannelLayoutTag_AAC_6_0 = (141L << 16) | 6,                       // C L R Ls Rs Cs
-	kAudioChannelLayoutTag_AAC_6_1 = (142L << 16) | 7,                       // C L R Ls Rs Cs Lfe
-	kAudioChannelLayoutTag_AAC_7_0 = (143L << 16) | 7,                       // C L R Ls Rs Rls Rrs
-	kAudioChannelLayoutTag_AAC_7_1 = kAudioChannelLayoutTag_MPEG_7_1_B,    // C Lc Rc L R Ls Rs Lfe
-	kAudioChannelLayoutTag_AAC_Octagonal = (144L << 16) | 8,                       // C L R Ls Rs Rls Rrs Cs
+	kAudioChannelLayoutTag_AAC_4_0 = kAudioChannelLayoutTag_MPEG_4_0_B,             // C L R Cs
+	kAudioChannelLayoutTag_AAC_5_0 = kAudioChannelLayoutTag_MPEG_5_0_D,             // C L R Ls Rs
+	kAudioChannelLayoutTag_AAC_5_1 = kAudioChannelLayoutTag_MPEG_5_1_D,             // C L R Ls Rs Lfe
+	kAudioChannelLayoutTag_AAC_6_0 = (141L << 16) | 6,                              // C L R Ls Rs Cs
+	kAudioChannelLayoutTag_AAC_6_1 = (142L << 16) | 7,                              // C L R Ls Rs Cs Lfe
+	kAudioChannelLayoutTag_AAC_7_0 = (143L << 16) | 7,                              // C L R Ls Rs Rls Rrs
+	kAudioChannelLayoutTag_AAC_7_1 = kAudioChannelLayoutTag_MPEG_7_1_B,             // C Lc Rc L R Ls Rs Lfe
+	kAudioChannelLayoutTag_AAC_Octagonal = (144L << 16) | 8,                        // C L R Ls Rs Rls Rrs Cs
 
-	kAudioChannelLayoutTag_TMH_10_2_std = (145L << 16) | 16,                      // L R C Vhc Lsd Rsd Ls Rs Vhl Vhr Lw Rw Csd Cs LFE1 LFE2
-	kAudioChannelLayoutTag_TMH_10_2_full = (146L << 16) | 21,                      // TMH_10_2_std plus: Lc Rc HI VI Haptic
+	kAudioChannelLayoutTag_TMH_10_2_std = (145L << 16) | 16,                        // L R C Vhc Lsd Rsd Ls Rs Vhl Vhr Lw Rw Csd Cs LFE1 LFE2
+	kAudioChannelLayoutTag_TMH_10_2_full = (146L << 16) | 21,                       // TMH_10_2_std plus: Lc Rc HI VI Haptic
 
-	kAudioChannelLayoutTag_DiscreteInOrder = (147L << 16) | 0,                       // needs to be ORed with the actual number of channels  
+	kAudioChannelLayoutTag_DiscreteInOrder = (147L << 16) | 0,                      // needs to be ORed with the actual number of channels  
 
-	kAudioChannelLayoutTag_AudioUnit_7_0_Front = (148L << 16) | 7,                       // L R Ls Rs C Lc Rc
+	kAudioChannelLayoutTag_AudioUnit_7_0_Front = (148L << 16) | 7,                  // L R Ls Rs C Lc Rc
 
-	kAudioChannelLayoutTag_AC3_1_0_1 = (149L << 16) | 2,                       // C LFE
-	kAudioChannelLayoutTag_AC3_3_0 = (150L << 16) | 3,                       // L C R
-	kAudioChannelLayoutTag_AC3_3_1 = (151L << 16) | 4,                       // L C R Cs
-	kAudioChannelLayoutTag_AC3_3_0_1 = (152L << 16) | 4,                       // L C R LFE
-	kAudioChannelLayoutTag_AC3_2_1_1 = (153L << 16) | 4,                       // L R Cs LFE
-	kAudioChannelLayoutTag_AC3_3_1_1 = (154L << 16) | 5,                       // L C R Cs LFE
+	kAudioChannelLayoutTag_AC3_1_0_1 = (149L << 16) | 2,                            // C LFE
+	kAudioChannelLayoutTag_AC3_3_0 = (150L << 16) | 3,                              // L C R
+	kAudioChannelLayoutTag_AC3_3_1 = (151L << 16) | 4,                              // L C R Cs
+	kAudioChannelLayoutTag_AC3_3_0_1 = (152L << 16) | 4,                            // L C R LFE
+	kAudioChannelLayoutTag_AC3_2_1_1 = (153L << 16) | 4,                            // L R Cs LFE
+	kAudioChannelLayoutTag_AC3_3_1_1 = (154L << 16) | 5,                            // L C R Cs LFE
+	kAudioChannelLayoutTag_EAC_6_0_A = (155 << 16) | 6,                             // L C R Ls Rs Cs
+	kAudioChannelLayoutTag_EAC_7_0_A = (156 << 16) | 7,                             // L C R Ls Rs Rls Rrs
+	kAudioChannelLayoutTag_EAC3_6_1_A = (157 << 16) | 7,                            // L C R Ls Rs LFE Cs
+	kAudioChannelLayoutTag_EAC3_6_1_B = (158 << 16) | 7,                            // L C R Ls Rs LFE Ts
+	kAudioChannelLayoutTag_EAC3_6_1_C = (159 << 16) | 7,                            // L C R Ls Rs LFE Vhc
+	kAudioChannelLayoutTag_EAC3_7_1_A = (160 << 16) | 8,                            // L C R Ls Rs LFE Rls Rrs
+	kAudioChannelLayoutTag_EAC3_7_1_B = (161 << 16) | 8,                            // L C R Ls Rs LFE Lc Rc
+	kAudioChannelLayoutTag_EAC3_7_1_C = (162 << 16) | 8,                            // L C R Ls Rs LFE Lsd Rsd
+	kAudioChannelLayoutTag_EAC3_7_1_D = (163 << 16) | 8,                            // L C R Ls Rs LFE Lw Rw
+	kAudioChannelLayoutTag_EAC3_7_1_E = (164 << 16) | 8,                            // L C R Ls Rs LFE Vhl Vhr
+	kAudioChannelLayoutTag_EAC3_7_1_F = (165 << 16) | 8,                            // L C R Ls Rs LFE Cs Ts
+	kAudioChannelLayoutTag_EAC3_7_1_G = (166 << 16) | 8,                            // L C R Ls Rs LFE Cs Vhc
+	kAudioChannelLayoutTag_EAC3_7_1_H = (167 << 16) | 8,                            // L C R Ls Rs LFE Ts Vhc
 
-	kAudioChannelLayoutTag_EAC_6_0_A = (155 << 16) | 6,                        // L C R Ls Rs Cs
-	kAudioChannelLayoutTag_EAC_7_0_A = (156 << 16) | 7,                        // L C R Ls Rs Rls Rrs
-
-	kAudioChannelLayoutTag_EAC3_6_1_A = (157 << 16) | 7,                        // L C R Ls Rs LFE Cs
-	kAudioChannelLayoutTag_EAC3_6_1_B = (158 << 16) | 7,                        // L C R Ls Rs LFE Ts
-	kAudioChannelLayoutTag_EAC3_6_1_C = (159 << 16) | 7,                        // L C R Ls Rs LFE Vhc
-	kAudioChannelLayoutTag_EAC3_7_1_A = (160 << 16) | 8,                        // L C R Ls Rs LFE Rls Rrs
-	kAudioChannelLayoutTag_EAC3_7_1_B = (161 << 16) | 8,                        // L C R Ls Rs LFE Lc Rc
-	kAudioChannelLayoutTag_EAC3_7_1_C = (162 << 16) | 8,                        // L C R Ls Rs LFE Lsd Rsd
-	kAudioChannelLayoutTag_EAC3_7_1_D = (163 << 16) | 8,                        // L C R Ls Rs LFE Lw Rw
-	kAudioChannelLayoutTag_EAC3_7_1_E = (164 << 16) | 8,                        // L C R Ls Rs LFE Vhl Vhr
-
-	kAudioChannelLayoutTag_EAC3_7_1_F = (165 << 16) | 8,                        // L C R Ls Rs LFE Cs Ts
-	kAudioChannelLayoutTag_EAC3_7_1_G = (166 << 16) | 8,                        // L C R Ls Rs LFE Cs Vhc
-	kAudioChannelLayoutTag_EAC3_7_1_H = (167 << 16) | 8,                        // L C R Ls Rs LFE Ts Vhc
-
-	kAudioChannelLayoutTag_DTS_3_1 = (168 << 16) | 4,                        // C L R LFE
-	kAudioChannelLayoutTag_DTS_4_1 = (169 << 16) | 5,                        // C L R Cs LFE
-	kAudioChannelLayoutTag_DTS_6_0_A = (170 << 16) | 6,                        // Lc Rc L R Ls Rs
-	kAudioChannelLayoutTag_DTS_6_0_B = (171 << 16) | 6,                        // C L R Rls Rrs Ts
-	kAudioChannelLayoutTag_DTS_6_0_C = (172 << 16) | 6,                        // C Cs L R Rls Rrs
-	kAudioChannelLayoutTag_DTS_6_1_A = (173 << 16) | 7,                        // Lc Rc L R Ls Rs LFE
-	kAudioChannelLayoutTag_DTS_6_1_B = (174 << 16) | 7,                        // C L R Rls Rrs Ts LFE
-	kAudioChannelLayoutTag_DTS_6_1_C = (175 << 16) | 7,                        // C Cs L R Rls Rrs LFE
-	kAudioChannelLayoutTag_DTS_7_0 = (176 << 16) | 7,                        // Lc C Rc L R Ls Rs
-	kAudioChannelLayoutTag_DTS_7_1 = (177 << 16) | 8,                        // Lc C Rc L R Ls Rs LFE    
-	kAudioChannelLayoutTag_DTS_8_0_A = (178 << 16) | 8,                        // Lc Rc L R Ls Rs Rls Rrs
-	kAudioChannelLayoutTag_DTS_8_0_B = (179 << 16) | 8,                        // Lc C Rc L R Ls Cs Rs
-	kAudioChannelLayoutTag_DTS_8_1_A = (180 << 16) | 9,                        // Lc Rc L R Ls Rs Rls Rrs LFE
-	kAudioChannelLayoutTag_DTS_8_1_B = (181 << 16) | 9,                        // Lc C Rc L R Ls Cs Rs LFE
-	kAudioChannelLayoutTag_DTS_6_1_D = (182 << 16) | 7,                        // C L R Ls Rs LFE Cs
-
-	kAudioChannelLayoutTag_AAC_7_1_B = (183 << 16) | 8,                        // C L R Ls Rs Rls Rrs LFE
-	kAudioChannelLayoutTag_AAC_7_1_C = (184 << 16) | 8,                        // C L R Ls Rs LFE Vhl Vhr
+	kAudioChannelLayoutTag_DTS_3_1 = (168 << 16) | 4,                               // C L R LFE
+	kAudioChannelLayoutTag_DTS_4_1 = (169 << 16) | 5,                               // C L R Cs LFE
+	kAudioChannelLayoutTag_DTS_6_0_A = (170 << 16) | 6,                             // Lc Rc L R Ls Rs
+	kAudioChannelLayoutTag_DTS_6_0_B = (171 << 16) | 6,                             // C L R Rls Rrs Ts
+	kAudioChannelLayoutTag_DTS_6_0_C = (172 << 16) | 6,                             // C Cs L R Rls Rrs
+	kAudioChannelLayoutTag_DTS_6_1_A = (173 << 16) | 7,                             // Lc Rc L R Ls Rs LFE
+	kAudioChannelLayoutTag_DTS_6_1_B = (174 << 16) | 7,                             // C L R Rls Rrs Ts LFE
+	kAudioChannelLayoutTag_DTS_6_1_C = (175 << 16) | 7,                             // C Cs L R Rls Rrs LFE
+	kAudioChannelLayoutTag_DTS_7_0 = (176 << 16) | 7,                               // Lc C Rc L R Ls Rs
+	kAudioChannelLayoutTag_DTS_7_1 = (177 << 16) | 8,                               // Lc C Rc L R Ls Rs LFE    
+	kAudioChannelLayoutTag_DTS_8_0_A = (178 << 16) | 8,                             // Lc Rc L R Ls Rs Rls Rrs
+	kAudioChannelLayoutTag_DTS_8_0_B = (179 << 16) | 8,                             // Lc C Rc L R Ls Cs Rs
+	kAudioChannelLayoutTag_DTS_8_1_A = (180 << 16) | 9,                             // Lc Rc L R Ls Rs Rls Rrs LFE
+	kAudioChannelLayoutTag_DTS_8_1_B = (181 << 16) | 9,                             // Lc C Rc L R Ls Cs Rs LFE
+	kAudioChannelLayoutTag_DTS_6_1_D = (182 << 16) | 7,                             // C L R Ls Rs LFE Cs
+	kAudioChannelLayoutTag_AAC_7_1_B = (183 << 16) | 8,                             // C L R Ls Rs Rls Rrs LFE
+	kAudioChannelLayoutTag_AAC_7_1_C = (184 << 16) | 8,                             // C L R Ls Rs LFE Vhl Vhr
 };
 
 typedef OSStatus (*AudioConverterNew_t)(
 	const AudioStreamBasicDescription *inSourceFormat,
 	const AudioStreamBasicDescription *inDestinationFormat,
-	AudioConverterRef *outAudioConverter);
+	AudioConverterPtr *outAudioConverter);
 
 typedef OSStatus (*AudioConverterDispose_t)(
-	AudioConverterRef inAudioConverter);
+	AudioConverterPtr inAudioConverter);
 
 typedef OSStatus (*AudioConverterReset_t)(
-	AudioConverterRef inAudioConverter);
+	AudioConverterPtr inAudioConverter);
 
 typedef OSStatus (*AudioConverterGetProperty_t)(
-	AudioConverterRef inAudioConverter,
+	AudioConverterPtr inAudioConverter,
 	AudioConverterPropertyID inPropertyID,
 	UInt32 *ioPropertyDataSize,
 	void *outPropertyData);
 
 typedef OSStatus (*AudioConverterGetPropertyInfo_t)(
-	AudioConverterRef inAudioConverter,
+	AudioConverterPtr inAudioConverter,
 	AudioConverterPropertyID inPropertyID,
 	UInt32 *outSize,
 	Boolean *outWritable);
 
 typedef OSStatus (*AudioConverterSetProperty_t)(
-	AudioConverterRef inAudioConverter,
+	AudioConverterPtr inAudioConverter,
 	AudioConverterPropertyID inPropertyID,
 	UInt32 inPropertyDataSize,
 	const void *inPropertyData);
 
 typedef OSStatus (*AudioConverterFillComplexBuffer_t)(
-	AudioConverterRef inAudioConverter,
+	AudioConverterPtr inAudioConverter,
 	AudioConverterComplexInputDataProc inInputDataProc,
 	void *inInputDataProcUserData,
 	UInt32 *ioOutputDataPacketSize,
@@ -536,8 +523,8 @@ static AudioFormatGetProperty_t AudioFormatGetProperty = nullptr;
 static AudioFormatGetPropertyInfo_t AudioFormatGetPropertyInfo = nullptr;
 
 inline uint8_t getSampleRateTableIndex(uint32_t sampleRate) {
-    if (sampleRate == 44100) { return 4; }
-    if (sampleRate == 48000) { return 3; }
+    if (sampleRate == 44100) return 4;
+    if (sampleRate == 48000) return 3;
 
 	static const uint32_t kSampleRateTable[] = {
 		96000, 88200, 64000, 48000, 44100, 32000,
@@ -577,48 +564,31 @@ inline uint8_t getSampleRateTableIndex(uint32_t sampleRate) {
 inline uint8_t* adts_packet_header(uint32_t packetLength, uint32_t mSampleRate, uint8_t mChannelCount) {
 	static uint8_t header[ADTS_PACKET_HEADER_LENGTH];
 
-	uint8_t data = 0xFF;
-	header[0] = data;
+	header[0] = 0xFF;
 
 	uint8_t kFieldId = 0;
 	uint8_t kMpegLayer = 0;
 	uint8_t kProtectionAbsense = 1;
-	data = 0xF0;
-	data |= (kFieldId << 3);
-	data |= (kMpegLayer << 1);
-	data |= kProtectionAbsense;
-	header[1] = data;
+	header[1] = 0xF0 | (kFieldId << 3) | (kMpegLayer << 1) | kProtectionAbsense;
 
 	uint8_t kProfileCode = OMX_AUDIO_AACObjectLC - 1;
 	uint8_t kSampleFreqIndex = getSampleRateTableIndex(mSampleRate);
 	uint8_t kPrivateStream = 0;
 	uint8_t kChannelConfigCode = mChannelCount;
-	data = (kProfileCode << 6);
-	data |= (kSampleFreqIndex << 2);
-	data |= (kPrivateStream << 1);
-	data |= (kChannelConfigCode >> 2);
-	header[2] = data;
+	header[2] = (kProfileCode << 6) | (kSampleFreqIndex << 2) | (kPrivateStream << 1) | (kChannelConfigCode >> 2);
 
 	// 4 bits from originality to copyright start
 	uint8_t kCopyright = 0;
 	uint32_t kFrameLength = ADTS_PACKET_HEADER_LENGTH + packetLength;
-	data = ((kChannelConfigCode & 3) << 6);
-	data |= (kCopyright << 2);
-	data |= ((kFrameLength & 0x1800) >> 11);
-	header[3] = data;
+	header[3] = ((kChannelConfigCode & 3) << 6) | (kCopyright << 2) | ((kFrameLength & 0x1800) >> 11);
 
-	data = (uint8_t)((kFrameLength & 0x07F8) >> 3);
-	header[4] = data;
+	header[4] = (uint8_t)((kFrameLength & 0x07F8) >> 3);
 
 	uint32_t kBufferFullness = 0x7FF;  // VBR
-	data = ((kFrameLength & 0x07) << 5);
-	data |= ((kBufferFullness & 0x07C0) >> 6);
-	header[5] = data;
+	header[5] = ((kFrameLength & 0x07) << 5) | (uint8_t)((kBufferFullness & 0x07C0) >> 6);
 
 	uint8_t kFrameCount = 0;
-	data = ((kBufferFullness & 0x03F) << 2);
-	data |= kFrameCount;
-	header[6] = data;
+	header[6] = ((kBufferFullness & 0x03F) << 2) | kFrameCount;
 
 	return header;
 }
