@@ -155,11 +155,11 @@ void MainComponent::paint (Graphics& g) {
 }
 
 void MainComponent::resized() {
-    if (device != nullptr && device->get_device_status() == DeviceStatus::Open) {
-        ui_device_sample_rate.setText(String(device->get_sample_rate(), 0), dontSendNotification);
-        ui_device_sample_type.setText(device->get_sample_type() == ASIOSTInt32LSB ? "Int32" : "Float32", dontSendNotification);
-        ui_device_in_channels.setText("In: " + String(device->get_input_channel_names().size()), dontSendNotification);
-        ui_device_out_channels.setText("Out: " + String(device->get_output_channel_names().size()), dontSendNotification);
+    if (device != nullptr && device->instance != nullptr && device->get_device_status() >= DeviceStatus::Open) {
+        ui_device_sample_rate.setText(String(device->instance->sample_rate, 0), dontSendNotification);
+        ui_device_sample_type.setText(device->instance->sample_type == ASIOSTInt32LSB ? "Int32" : "Float32", dontSendNotification);
+        ui_device_in_channels.setText("In: " + String(device->instance->input_channels_number), dontSendNotification);
+        ui_device_out_channels.setText("Out: " + String(device->instance->output_channels_number), dontSendNotification);
     }
     else {
         ui_device_sample_rate.setText("-", dontSendNotification);
@@ -204,8 +204,8 @@ void MainComponent::resized() {
 
 int MainComponent::drawChannels(int x, int y, int w, int h) {
     int height = 0;
-    if (device != nullptr && device->get_device_status() == DeviceStatus::Open) {
-        StringArray channel_names = device->get_input_channel_names();
+    if (device != nullptr && device->instance && device->get_device_status() == DeviceStatus::Open) {
+        StringArray channel_names = device->instance->input_channel_names;
         int channels_count = channel_names.size();
         if (channels_count > MAX_INPUT_CHANNELS) channels_count = MAX_INPUT_CHANNELS;
         for (int i = 0; i < channels_count; i += 1) {
@@ -348,8 +348,8 @@ void MainComponent::buttonClicked(juce::Button* button) {
             active_channels[channel_index] = false;
         }
 
-        byte active_channels_count = 0;
-        if (device) active_channels_count = device->update_active_channels();
+        byte active_channels_number = 0;
+        if (device) active_channels_number = device->update_active_channels();
         active_channel_indexes.sortNatural();
         active_channels_string = active_channel_indexes.joinIntoString(",");
         WriteSettings(ACTIVE_CHANNELS_INI_KEY, active_channels_string);
@@ -359,7 +359,7 @@ void MainComponent::buttonClicked(juce::Button* button) {
         ui_writer_start_button.setEnabled(true);
         ui_writer_stop_button.setEnabled(false);
 
-        writer->init(0, active_channels_count);
+        writer->init(0, active_channels_number);
         
         for (int i = 0; i < MAX_INPUT_CHANNELS; i += 1) {
             volumeter[i].setBounds(325, 120 + 30 * i, 0, 20);

@@ -8,7 +8,31 @@ FileLogger *logger = nullptr;
 LogLevel log_level = LogLevel::Debug;
 MainComponent* main_component = nullptr;
 
-class MCACApplication  : public juce::JUCEApplication {
+class MainWindow : public juce::DocumentWindow {
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
+
+public:
+    MainWindow(juce::String name) : DocumentWindow(name, juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId), DocumentWindow::allButtons) {
+        setUsingNativeTitleBar(true);
+        main_component = new MainComponent();
+        setContentOwned(main_component, true);
+
+        setResizable(true, true);
+        const int fixed_width = 10 + 315 + 20 + 285 + 10;
+        setResizeLimits(fixed_width, 300, 8000, 8000);
+        centreWithSize(getWidth(), getHeight());
+        DocumentWindow::setName(getMainTitle());
+        Component::setVisible(true);
+    }
+
+    void closeButtonPressed() override {
+        JUCEApplication::getInstance()->systemRequestedQuit();
+    }
+};
+
+class MCACApplication : public juce::JUCEApplication {
+    std::unique_ptr<MainWindow> mainWindow;
+
 public:
     MCACApplication() {}
 
@@ -16,10 +40,10 @@ public:
     const juce::String getApplicationVersion() override    { return ProjectInfo::versionString; }
     bool moreThanOneInstanceAllowed() override             { return true; }
 
-    void initialise (const juce::String& commandLine) override {
+    void initialise(const juce::String& commandLine) override {
         if (commandLine != "") instance_name = commandLine;
 
-        appdata_folder = File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName() + "\\" APP_NAME;
+        appdata_folder = File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName() + "\\" + APP_NAME;
 
         File folder(appdata_folder);
         if (!folder.exists()) folder.createDirectory();
@@ -28,7 +52,7 @@ public:
 
         settings_file = appdata_folder + "\\settings.ini";
 
-        mainWindow.reset (new MainWindow (getApplicationName()));
+        mainWindow.reset(new MainWindow (getApplicationName()));
     }
 
     void shutdown() override {
@@ -44,37 +68,11 @@ public:
         quit();
     }
 
-    void anotherInstanceStarted (const juce::String& /*commandLine*/) override {
+    void anotherInstanceStarted(const juce::String& /*commandLine*/) override {
         // When another instance of the app is launched while this one is running,
         // this method is invoked, and the commandLine parameter tells you what
         // the other instance's command-line arguments were.
     }
-
-    class MainWindow    : public juce::DocumentWindow {
-    public:
-        MainWindow (juce::String name) : DocumentWindow (name, juce::Desktop::getInstance().getDefaultLookAndFeel() .findColour (juce::ResizableWindow::backgroundColourId), DocumentWindow::allButtons) {
-            setUsingNativeTitleBar(true);
-            main_component = new MainComponent();
-            setContentOwned(main_component, true);
-
-            setResizable(true, true);
-            const int fixed_width = 10 + 315 + 20 + 285 + 10;
-            setResizeLimits(fixed_width, 300, 8000, 8000);
-            centreWithSize(getWidth(), getHeight());
-            setName(getMainTitle());
-            setVisible(true);
-        }
-
-        void closeButtonPressed() override {
-            JUCEApplication::getInstance()->systemRequestedQuit();
-        }
-
-    private:
-        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
-    };
-
-private:
-    std::unique_ptr<MainWindow> mainWindow;
 };
 
-START_JUCE_APPLICATION (MCACApplication)
+START_JUCE_APPLICATION(MCACApplication)

@@ -55,7 +55,7 @@ public:
 
 	Writer();
 	~Writer();
-	void init(double _sample_rate = 0.0f, byte active_channels_count = 0);
+	void init(double _sample_rate = 0.0f, byte active_channels_number = 0);
 	void uninit();
 	bool open();
 	void close(bool report = true);

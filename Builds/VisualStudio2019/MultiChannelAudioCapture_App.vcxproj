@@ -1245,6 +1245,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Source\asio\asio.h" />
+    <ClInclude Include="..\..\Source\asio\asiosys.h" />
+    <ClInclude Include="..\..\Source\asio\iasiodrv.h" />
     <ClInclude Include="..\..\Source\asio_api.h" />
     <ClInclude Include="..\..\Source\asio_callbacks_wrapper.h" />
     <ClInclude Include="..\..\Source\core.h" />

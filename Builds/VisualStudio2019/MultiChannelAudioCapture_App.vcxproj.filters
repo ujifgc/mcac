@@ -199,6 +199,9 @@
     <Filter Include="JUCE Library Code">
       <UniqueIdentifier>{7ED5A90E-41AF-A1EF-659B-37CEEAB9BA61}</UniqueIdentifier>
     </Filter>
+    <Filter Include="MultiChannelAudioCapture\Source\asio">
+      <UniqueIdentifier>{5f0b9395-ec0e-4331-a28c-e87ed6541bda}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Source\Main.cpp">
@@ -2484,6 +2487,15 @@
       <Filter>MultiChannelAudioCapture\Source</Filter>
     </ClInclude>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="..\..\Source\asio\asio.h">
+      <Filter>MultiChannelAudioCapture\Source\asio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\asio\asiosys.h">
+      <Filter>MultiChannelAudioCapture\Source\asio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\asio\iasiodrv.h">
+      <Filter>MultiChannelAudioCapture\Source\asio</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\JUCE\modules\juce_core\native\java\README.txt">

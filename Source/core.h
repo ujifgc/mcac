@@ -31,10 +31,11 @@ constexpr int TEMPORARY_BUFFER_SIZE = 4096;
 constexpr int MORE_DATA_REQUIRED = 1;
 
 enum class DeviceStatus : int {
-	None = 'none',
-	Initialized = 'init',
-	Open = 'open',
-	Fail = 'fail',
+	Undefined = -2,
+	Fail = -1,
+	None = 0,
+	Initialized = 1,
+	Open = 2,
 };
 
 static const char* level_labels[] = { "DEBUG", "INFO", "WARNING", "ERROR", "FATAL" };
@@ -48,5 +49,7 @@ enum class LogLevel : int {
 };
 
 enum class DeviceRequest : int {
-	Open = 'open',
+	None = 0,
+	Open = 1,
+	Stop = 2,
 };

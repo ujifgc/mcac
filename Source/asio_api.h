@@ -7,73 +7,54 @@
 #include "juce/JuceHeader.h"
 #include "obs/WinHandle.h"
 
-//==
-// per https://en.wikipedia.org/wiki/Sampling_(signal_processing)#Sampling_rate
-//
-const double standard_sample_rates[] = {
-	8000.0, 11025.0, 16000.0, 22050.0, 32000.0, 37800.0, 44056.0, 44100.0,
-	47250.0, 48000.0, 50000.0, 50400.0, 64000.0, 88200.0, 96000.0, 176400.0,
-	192000.0, 352800.0, 2822400.0, 5644800.0, 11289600.0, 22579200.0
+const ASIOSampleRate supported_sample_rates[] = {
+	44100.0, 48000.0, 96000.0, 88200.0, 64000.0, 32000.0, 24000.0, 22050.0, 16000.0, 12000.0, 11025.0, 8000.0
 };
-const double default_sample_rate = 44100.0;
 
 class AsioDevice {
 	IASIO *driver = nullptr;
 	int index = -1;
 
-	long driver_version = 0;
 	char driver_name[64] = {};
-	
-	long min_buffer_size = 0, max_buffer_size = 0, preferred_buffer_size = 0, buffer_size_granularity = 0;
-	long input_latency = 0, output_latency = 0;
-	Array<double> supported_sample_rates;
-	bool output_ready_available = false;
 
-	ASIOBufferInfo buffer_infos[MAX_INPUT_CHANNELS + MAX_OUTPUT_CHANNELS] = {};
+	long min_buffer_size = 0, max_buffer_size = 0, buffer_size = 0, buffer_size_granularity = 0;
 
-	int output_samples_per_10ms = 0;
+	ASIOBufferInfo buffer_infos[MAX_INPUT_CHANNELS] = {};
 
 	circlebuf input_buffers[MAX_INPUT_CHANNELS] = {};
 	circlebuf *input_buffer_pointers[MAX_INPUT_CHANNELS] = {};
 
 	WinHandle stop_signal, receive_signal;
 	WinHandle capture_thread;
-	bool is_initialized = false, is_open = false;
-	bool failed_on_close = false;
-	int reconnect_count = 0;
-	CRITICAL_SECTION buffer_section, switch_section;
-
-	bool driver_buffers_allocated = false;
+	CRITICAL_SECTION buffer_section, status_section;
 
 	static DWORD WINAPI CaptureThread(void* data);
 
+	byte active_channels_number = 0;
+
+	DeviceStatus requested_status = DeviceStatus::None;
+
+	void init();
+	void uninit();
+	void refuse(long, const char*);
+	void initialize_sample_rates();
+	void initialize_channels();
+	void push_received_buffers(int buffer_index);
+
 public:
 	long input_channels_number = 0, output_channels_number = 0;
-	byte active_channels_count = 0;
-	StringArray input_channel_names, output_channel_names;
-	double sample_rate = 0.0;
-	long sample_type = 0;
+	StringArray input_channel_names;
+
+	ASIOSampleRate sample_rate = 0.0;
+	ASIOSampleType sample_type = -1;
+
+	DeviceStatus status = DeviceStatus::None;
+	bool switch_status(DeviceStatus _requested_status = DeviceStatus::Undefined);
 
 	static ASIOTime* buffer_switch_time_info(int device_index, ASIOTime* timeInfo, long index, ASIOBool processNow);
 	static void buffer_switch(int device_index, long index, ASIOBool processNow);
 	static void sample_rate_changed(int device_index, ASIOSampleRate sRate);
 	static long message(int device_index, long selector, long value, void* message, double* opt);
-
-private:
-	void init();
-	void uninit();
-	void refuse(long, const char*);
-	void initialize_sample_rates();
-	void initialize_channel_names();
-	void initialize_latencies();
-	bool switch_status();
-	void push_received_buffers(int buffer_index);
-
-public:
-	String name;
-	DeviceStatus status, plan;
-
-	void set_status(DeviceStatus);
 
 	AsioDevice(IASIO *driver, int index);
 	~AsioDevice();
@@ -91,7 +72,6 @@ public:
 		switch_status();
 	}
 
-	void set_sample_rate(double);
 	byte update_active_channels();
 };
 
@@ -105,11 +85,6 @@ static inline void convertInt32ToFloat(const char* src, float* dest, int numSamp
 		*dest++ = (float)(g * (int)littleEndianInt(src));
 		src += 4;
 	}
-}
-
-inline void try_release(IASIO* driver) {
-	__try { driver->Release(); }
-	__except (EXCEPTION_EXECUTE_HANDLER) {}
 }
 
 inline void mlog(String device, String message, LogLevel message_level = LogLevel::Info) {
